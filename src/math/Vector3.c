@@ -1,6 +1,5 @@
-#include "Vector3.h"
+#include "math/Vector3.h"
 #include <math.h>
-#include <stdbool.h>
 
 Vector3 Vector3_create(float x, float y, float z) { return (Vector3){x, y, z}; }
 
@@ -21,6 +20,9 @@ Vector3 Vector3_scale(Vector3 v, float scalar) {
 }
 
 void Vector3_scale_in_place(Vector3* v, float scalar) {
+    if (!v)
+        return;
+
     v->x *= scalar;
     v->y *= scalar;
     v->z *= scalar;
@@ -41,6 +43,9 @@ Vector3 Vector3_normalize(Vector3 v) {
 }
 
 void Vector3_normalize_in_place(Vector3* v) {
+    if (!v)
+        return;
+
     float length = Vector3_length(*v);
     v->x /= length;
     v->y /= length;

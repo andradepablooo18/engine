@@ -1,0 +1,70 @@
+[
+  {
+    "file": "src/math/Vector3.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-Wextra",
+      "-std=c99",
+      "-Iinclude",
+      "-I/opt/homebrew/include",
+      "-c",
+      "src/math/Vector3.c",
+      "-o",
+      "build/math/Vector3.o"
+    ],
+    "directory": "/Users/Pablo/Projects/engine",
+    "output": "build/math/Vector3.o"
+  },
+  {
+    "file": "src/math/Vector2.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-Wextra",
+      "-std=c99",
+      "-Iinclude",
+      "-I/opt/homebrew/include",
+      "-c",
+      "src/math/Vector2.c",
+      "-o",
+      "build/math/Vector2.o"
+    ],
+    "directory": "/Users/Pablo/Projects/engine",
+    "output": "build/math/Vector2.o"
+  },
+  {
+    "file": "src/Engine.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-Wextra",
+      "-std=c99",
+      "-Iinclude",
+      "-I/opt/homebrew/include",
+      "-c",
+      "src/Engine.c",
+      "-o",
+      "build/Engine.o"
+    ],
+    "directory": "/Users/Pablo/Projects/engine",
+    "output": "build/Engine.o"
+  },
+  {
+    "file": "src/main.c",
+    "arguments": [
+      "/usr/bin/gcc",
+      "-Wall",
+      "-Wextra",
+      "-std=c99",
+      "-Iinclude",
+      "-I/opt/homebrew/include",
+      "-c",
+      "src/main.c",
+      "-o",
+      "build/main.o"
+    ],
+    "directory": "/Users/Pablo/Projects/engine",
+    "output": "build/main.o"
+  }
+]

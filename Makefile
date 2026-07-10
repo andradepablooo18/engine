@@ -1,14 +1,30 @@
 CC = gcc
-CFLAGS = -Wall -std=c99 
 
-SRC = *.c
-TARGET = engine
+TARGET = bin/engine
 
-build:
-	$(CC) $(CFLAGS) $(SRC) -o $(TARGET)
+CFLAGS = -Wall -Wextra -std=c99 \
+		 -Iinclude \
+		 $(shell pkg-config --cflags sdl3)
 
-run: build
+LDFLAGS = $(shell pkg-config --libs sdl3)
+
+SRC := $(shell find src -name "*.c")
+OBJ := $(patsubst src/%.c,build/%.o,$(SRC))
+
+all: $(TARGET)
+
+$(TARGET): $(OBJ)
+	@mkdir -p bin
+	$(CC) $(OBJ) -o $@ $(LDFLAGS)
+
+build/%.o: src/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm -rf build bin
+
+run: all
 	./$(TARGET)
 
-clear:
-	rm -f $(TARGET)
+.PHONY: all clean run

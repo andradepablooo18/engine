@@ -1,4 +1,4 @@
-#include "Vector2.h"
+#include "math/Vector2.h"
 #include <math.h>
 
 Vector2 Vector2_create(float x, float y) { return (Vector2){x, y}; }
@@ -18,6 +18,8 @@ Vector2 Vector2_scale(Vector2 v, float scalar) {
 }
 
 void Vector2_scale_in_place(Vector2* v, float scalar) {
+    if (!v)
+        return;
     v->x *= scalar;
     v->y *= scalar;
 }
@@ -36,6 +38,8 @@ Vector2 Vector2_normalize(Vector2 v) {
 }
 
 void Vector2_normalize_in_place(Vector2* v) {
+    if (!v)
+        return;
     float length = Vector2_length(*v);
     v->x /= length;
     v->y /= length;
