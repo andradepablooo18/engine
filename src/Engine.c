@@ -7,14 +7,14 @@ static void Engine_update(void);
 static void Engine_draw(void);
 
 bool Engine_create(Engine** engine) {
-    if (engine == NULL) {
-        fprintf(stderr, "Engine_create failed");
+    if (!engine) {
+        fprintf(stderr, "Engine_create: invalid argument\n");
         return false;
     }
 
     *engine = calloc(1, sizeof(Engine));
     if (!*engine) {
-        fprintf(stderr, "Engine_create failed\n");
+        fprintf(stderr, "Engine_create: allocation failed\n");
         return false;
     }
 
@@ -26,14 +26,12 @@ bool Engine_create(Engine** engine) {
         return false;
     }
 
-    e->window = SDL_CreateWindow(ENGINE_TITLE, WIDTH, HEIGHT, 0);
-    if (!e->window) {
-        fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
+    if (!Window_create(&e->window, ENGINE_TITLE, WIDTH, HEIGHT)) {
         Engine_destroy(engine);
         return false;
     }
 
-    e->renderer = SDL_CreateRenderer(e->window, NULL);
+    e->renderer = SDL_CreateRenderer(e->window->handle, NULL);
     if (!e->renderer) {
         fprintf(stderr, "SDL_CreateRenderer failed: %s\n", SDL_GetError());
         Engine_destroy(engine);
@@ -70,17 +68,16 @@ static void Engine_update(void) {}
 static void Engine_draw(void) {}
 
 void Engine_destroy(Engine** engine) {
-    if (engine == NULL || *engine == NULL)
+    if (!engine || !*engine)
         return;
 
     Engine* const e = *engine;
     if (e->renderer) {
         SDL_DestroyRenderer(e->renderer);
-        e->renderer = NULL;
+        e->renderer = NULL; // this could be deleted
     }
     if (e->window) {
-        SDL_DestroyWindow(e->window);
-        e->window = NULL;
+        Window_destroy(&e->window);
     }
     SDL_Quit();
     free(e);

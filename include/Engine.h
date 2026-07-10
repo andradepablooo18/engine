@@ -2,11 +2,11 @@
 #define ENGINE_H
 
 #include "Engine_config.h"
-#include <SDL3/SDL.h>
+#include "Window.h"
 #include <stdbool.h>
 
 typedef struct Engine {
-        SDL_Window* window;
+        Window* window;
         SDL_Renderer* renderer;
         SDL_Event event;
         bool is_running;
