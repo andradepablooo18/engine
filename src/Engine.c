@@ -1,6 +1,14 @@
 #include "Engine.h"
+#include "Window.h"
 #include <stdio.h>
 #include <stdlib.h>
+
+struct Engine {
+        Window* window;
+        SDL_Renderer* renderer;
+        SDL_Event event;
+        bool is_running;
+};
 
 static void Engine_process_input(Engine* e);
 static void Engine_update(void);

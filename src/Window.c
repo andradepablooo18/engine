@@ -3,6 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+struct Window {
+        SDL_Window* handle;
+        int width;
+        int height;
+        char* title;
+};
+
 bool Window_create(Window** window, const char* title, int width, int height) {
     if (!window) {
         fprintf(stderr, "Window_create: invalid argument\n");
