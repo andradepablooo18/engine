@@ -1,7 +1,6 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
-#include "Engine_config.h"
 #include <stdbool.h>
 
 typedef struct Engine Engine;

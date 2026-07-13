@@ -1,18 +1,21 @@
 #include "Engine.h"
+#include "Engine_config.h"
+#include "Renderer.h"
 #include "Window.h"
+#include "colors.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 struct Engine {
         Window* window;
-        SDL_Renderer* renderer;
+        Renderer* renderer;
         SDL_Event event;
         bool is_running;
 };
 
 static void Engine_process_input(Engine* e);
-static void Engine_update(void);
-static void Engine_draw(void);
+static void Engine_update();
+static void Engine_draw(Engine* e);
 
 bool Engine_create(Engine** engine) {
     if (!engine) {
@@ -39,9 +42,7 @@ bool Engine_create(Engine** engine) {
         return false;
     }
 
-    e->renderer = SDL_CreateRenderer(Window_get_handle(e->window), NULL);
-    if (!e->renderer) {
-        fprintf(stderr, "SDL_CreateRenderer failed: %s\n", SDL_GetError());
+    if (!Renderer_create(&e->renderer, e->window)) {
         Engine_destroy(engine);
         return false;
     }
@@ -52,10 +53,15 @@ bool Engine_create(Engine** engine) {
 }
 
 void Engine_run(Engine* e) {
+    if (!e) {
+        fprintf(stderr, "Engine_run: argument is NULL\n");
+        return;
+    }
+
     while (e->is_running) {
         Engine_process_input(e);
         Engine_update();
-        Engine_draw();
+        Engine_draw(e);
     }
 }
 
@@ -71,9 +77,13 @@ static void Engine_process_input(Engine* e) {
     }
 }
 
-static void Engine_update(void) {}
+static void Engine_update() {}
 
-static void Engine_draw(void) {}
+static void Engine_draw(Engine* e) {
+    Renderer_clear(e->renderer, COLOR_BLACK);
+    Renderer_draw_pixel(e->renderer, 10, 10, COLOR_WHITE);
+    Renderer_present(e->renderer);
+}
 
 void Engine_destroy(Engine** engine) {
     if (!engine || !*engine)
@@ -81,8 +91,7 @@ void Engine_destroy(Engine** engine) {
 
     Engine* const e = *engine;
     if (e->renderer) {
-        SDL_DestroyRenderer(e->renderer);
-        e->renderer = NULL; // this could be deleted
+        Renderer_destroy(&e->renderer);
     }
     if (e->window) {
         Window_destroy(&e->window);
