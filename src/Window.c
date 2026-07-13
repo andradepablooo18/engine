@@ -1,5 +1,4 @@
 #include "Window.h"
-#include <_string.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -61,10 +60,26 @@ void Window_destroy(Window** window) {
     *window = NULL;
 }
 
-SDL_Window* Window_get_handle(Window* self) {
+SDL_Window* Window_get_handle(const Window* self) {
     if (!self) {
         fprintf(stderr, "Window_get_handle: invalid argument\n");
         return NULL;
     }
     return self->handle;
+}
+
+int Window_get_width(const Window* self) {
+    if (!self) {
+        fprintf(stderr, "Window_get_width: invalid argument\n");
+        return -1;
+    }
+    return self->width;
+}
+
+int Window_get_height(const Window* self) {
+    if (!self) {
+        fprintf(stderr, "Window_get_heigth: invalid argument\n");
+        return -1;
+    }
+    return self->height;
 }
