@@ -60,3 +60,11 @@ void Window_destroy(Window** window) {
     free(w);
     *window = NULL;
 }
+
+SDL_Window* Window_get_handle(Window* self) {
+    if (!self) {
+        fprintf(stderr, "Window_get_handle: invalid argument\n");
+        return NULL;
+    }
+    return self->handle;
+}
