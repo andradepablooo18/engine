@@ -39,7 +39,7 @@ bool Engine_create(Engine** engine) {
         return false;
     }
 
-    e->renderer = SDL_CreateRenderer(e->window->handle, NULL);
+    e->renderer = SDL_CreateRenderer(Window_get_handle(e->window), NULL);
     if (!e->renderer) {
         fprintf(stderr, "SDL_CreateRenderer failed: %s\n", SDL_GetError());
         Engine_destroy(engine);
