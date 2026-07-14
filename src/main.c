@@ -1,6 +1,7 @@
 #include "Engine.h"
 #include "Input.h"
 #include "colors.h"
+#include "keys.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -25,7 +26,11 @@ int main(void) {
 
 void update(Engine* e) {
     Input* input = Engine_get_input(e);
-    if (Input_is_key_down(input, SDL_SCANCODE_W)) {
+    if (Input_is_key_down(input, KEY_W)) {
+        printf("W is pressed!\n");
+    }
+    if (Input_is_key_down(input, KEY_S)) {
+        printf("S is pressed!\n");
     }
 }
 

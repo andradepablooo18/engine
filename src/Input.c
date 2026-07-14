@@ -62,7 +62,7 @@ void Input_process_event(Input* self, const SDL_Event* event) {
     }
 }
 
-bool Input_is_key_down(const Input* self, SDL_Scancode key) {
+bool Input_is_key_down(const Input* self, Key key) {
     if (!self) {
         fprintf(stderr,
                 "Input_is_key_down: invalid argument (Input* is NULL)\n");
@@ -71,7 +71,7 @@ bool Input_is_key_down(const Input* self, SDL_Scancode key) {
     return self->current_keys[key];
 }
 
-bool Input_is_key_pressed(const Input* self, SDL_Scancode key) {
+bool Input_is_key_pressed(const Input* self, Key key) {
     if (!self) {
         fprintf(stderr,
                 "Input_is_key_down: invalid argument (Input* is NULL)\n");
@@ -80,7 +80,7 @@ bool Input_is_key_pressed(const Input* self, SDL_Scancode key) {
     return self->current_keys[key] && !self->previous_keys[key];
 }
 
-bool Input_is_key_released(const Input* self, SDL_Scancode key) {
+bool Input_is_key_released(const Input* self, Key key) {
     if (!self) {
         fprintf(stderr,
                 "Input_is_key_down: invalid argument (Input* is NULL)\n");
