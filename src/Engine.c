@@ -9,11 +9,12 @@
 struct Engine {
         Window* window;
         Renderer* renderer;
+        Input* input;
         SDL_Event event;
         bool is_running;
 };
 
-static void Engine_process_input(Engine* e);
+static void Engine_process_input(Engine* self);
 // static void Engine_update(Engine* e);
 // static void Engine_draw(Engine* e);
 
@@ -47,9 +48,33 @@ bool Engine_create(Engine** engine) {
         return false;
     }
 
+    if (!Input_create(&e->input)) {
+        Engine_destroy(engine);
+        return false;
+    }
+
     e->is_running = true;
 
     return true;
+}
+
+void Engine_destroy(Engine** engine) {
+    if (!engine || !*engine)
+        return;
+
+    Engine* const e = *engine;
+    if (e->input) {
+        Input_destroy(&e->input);
+    }
+    if (e->renderer) {
+        Renderer_destroy(&e->renderer);
+    }
+    if (e->window) {
+        Window_destroy(&e->window);
+    }
+    SDL_Quit();
+    free(e);
+    *engine = NULL;
 }
 
 void Engine_run(Engine* e, const EngineCallbacks* callbacks) {
@@ -75,11 +100,16 @@ void Engine_run(Engine* e, const EngineCallbacks* callbacks) {
     }
 }
 
-static void Engine_process_input(Engine* e) {
-    while (SDL_PollEvent(&e->event)) {
-        switch (e->event.type) {
+static void Engine_process_input(Engine* self) {
+    Input_begin_frame(self->input);
+
+    while (SDL_PollEvent(&self->event)) {
+
+        Input_process_event(self->input, &self->event);
+
+        switch (self->event.type) {
             case SDL_EVENT_QUIT:
-                e->is_running = false;
+                self->is_running = false;
                 return;
             default:
                 break;
@@ -90,21 +120,14 @@ static void Engine_process_input(Engine* e) {
 // static void Engine_update(Engine* e) {}
 
 // static void Engine_draw(Engine* e) {}
-
-void Engine_destroy(Engine** engine) {
-    if (!engine || !*engine)
-        return;
-
-    Engine* const e = *engine;
-    if (e->renderer) {
-        Renderer_destroy(&e->renderer);
+//
+Input* Engine_get_input(Engine* e) {
+    if (!e) {
+        fprintf(stderr,
+                "Engine_get_input: invalid argument (Engine* e is NULL)\n");
+        return NULL;
     }
-    if (e->window) {
-        Window_destroy(&e->window);
-    }
-    SDL_Quit();
-    free(e);
-    *engine = NULL;
+    return e->input;
 }
 
 void Engine_draw_pixel(Engine* e, int x, int y, u32 color) {

@@ -1,4 +1,5 @@
 #include "Engine.h"
+#include "Input.h"
 #include "colors.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,6 +23,10 @@ int main(void) {
     return EXIT_SUCCESS;
 }
 
-void update(Engine* e) {}
+void update(Engine* e) {
+    Input* input = Engine_get_input(e);
+    if (Input_is_key_down(input, SDL_SCANCODE_W)) {
+    }
+}
 
-void draw(Engine* e) { Engine_draw_pixel(e, 10, 10, COLOR_WHITE); };
+void draw(Engine* e) { Engine_draw_pixel(e, 10, 10, COLOR_WHITE); }

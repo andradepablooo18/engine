@@ -1,6 +1,7 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
+#include "Input.h"
 #include "types.h"
 #include <stdbool.h>
 
@@ -12,8 +13,9 @@ typedef struct EngineCallbacks {
 } EngineCallbacks;
 
 bool Engine_create(Engine** engine);
-void Engine_run(Engine* e, const EngineCallbacks* callbacks);
 void Engine_destroy(Engine** engine);
+void Engine_run(Engine* e, const EngineCallbacks* callbacks);
+Input* Engine_get_input(Engine* e);
 void Engine_draw_pixel(Engine* e, int x, int y, u32 color);
 
 #endif
