@@ -1,8 +1,8 @@
 #include "Engine.h"
 #include "Engine_config.h"
-#include "Renderer.h"
-#include "Window.h"
 #include "colors.h"
+#include "internal/renderer/Renderer.h"
+#include "internal/window/Window.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -14,8 +14,8 @@ struct Engine {
 };
 
 static void Engine_process_input(Engine* e);
-static void Engine_update();
-static void Engine_draw(Engine* e);
+// static void Engine_update(Engine* e);
+// static void Engine_draw(Engine* e);
 
 bool Engine_create(Engine** engine) {
     if (!engine) {
@@ -52,16 +52,26 @@ bool Engine_create(Engine** engine) {
     return true;
 }
 
-void Engine_run(Engine* e) {
+void Engine_run(Engine* e, const EngineCallbacks* callbacks) {
     if (!e) {
-        fprintf(stderr, "Engine_run: argument is NULL\n");
+        fprintf(stderr, "Engine_run: Engine* is NULL\n");
+        return;
+    }
+    if (!callbacks) {
+        fprintf(stderr, "Engine_run: EngineCallbacks* is NULL\n");
         return;
     }
 
     while (e->is_running) {
         Engine_process_input(e);
-        Engine_update();
-        Engine_draw(e);
+
+        if (callbacks->update)
+            callbacks->update(e);
+
+        Renderer_clear(e->renderer, COLOR_BLACK);
+        if (callbacks->draw)
+            callbacks->draw(e);
+        Renderer_present(e->renderer);
     }
 }
 
@@ -77,13 +87,9 @@ static void Engine_process_input(Engine* e) {
     }
 }
 
-static void Engine_update() {}
+// static void Engine_update(Engine* e) {}
 
-static void Engine_draw(Engine* e) {
-    Renderer_clear(e->renderer, COLOR_BLACK);
-    Renderer_draw_pixel(e->renderer, 10, 10, COLOR_WHITE);
-    Renderer_present(e->renderer);
-}
+// static void Engine_draw(Engine* e) {}
 
 void Engine_destroy(Engine** engine) {
     if (!engine || !*engine)
@@ -99,4 +105,8 @@ void Engine_destroy(Engine** engine) {
     SDL_Quit();
     free(e);
     *engine = NULL;
+}
+
+void Engine_draw_pixel(Engine* e, int x, int y, u32 color) {
+    Renderer_draw_pixel(e->renderer, x, y, color);
 }

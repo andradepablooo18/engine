@@ -4,6 +4,7 @@ TARGET = bin/engine
 
 CFLAGS = -Wall -Wextra -std=c99 \
 		 -Iinclude \
+		 -Isrc \
 		 $(shell pkg-config --cflags sdl3)
 
 LDFLAGS = $(shell pkg-config --libs sdl3)

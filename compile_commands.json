@@ -1,37 +1,39 @@
 [
   {
-    "file": "src/math/Vector3.c",
+    "file": "src/internal/renderer/Renderer.c",
     "arguments": [
       "/usr/bin/gcc",
       "-Wall",
       "-Wextra",
       "-std=c99",
       "-Iinclude",
+      "-Isrc",
       "-I/opt/homebrew/include",
       "-c",
-      "src/math/Vector3.c",
+      "src/internal/renderer/Renderer.c",
       "-o",
-      "build/math/Vector3.o"
+      "build/internal/renderer/Renderer.o"
     ],
     "directory": "/Users/Pablo/Projects/engine",
-    "output": "build/math/Vector3.o"
+    "output": "build/internal/renderer/Renderer.o"
   },
   {
-    "file": "src/math/Vector2.c",
+    "file": "src/internal/window/Window.c",
     "arguments": [
       "/usr/bin/gcc",
       "-Wall",
       "-Wextra",
       "-std=c99",
       "-Iinclude",
+      "-Isrc",
       "-I/opt/homebrew/include",
       "-c",
-      "src/math/Vector2.c",
+      "src/internal/window/Window.c",
       "-o",
-      "build/math/Vector2.o"
+      "build/internal/window/Window.o"
     ],
     "directory": "/Users/Pablo/Projects/engine",
-    "output": "build/math/Vector2.o"
+    "output": "build/internal/window/Window.o"
   },
   {
     "file": "src/Engine.c",
@@ -41,6 +43,7 @@
       "-Wextra",
       "-std=c99",
       "-Iinclude",
+      "-Isrc",
       "-I/opt/homebrew/include",
       "-c",
       "src/Engine.c",
@@ -49,22 +52,5 @@
     ],
     "directory": "/Users/Pablo/Projects/engine",
     "output": "build/Engine.o"
-  },
-  {
-    "file": "src/main.c",
-    "arguments": [
-      "/usr/bin/gcc",
-      "-Wall",
-      "-Wextra",
-      "-std=c99",
-      "-Iinclude",
-      "-I/opt/homebrew/include",
-      "-c",
-      "src/main.c",
-      "-o",
-      "build/main.o"
-    ],
-    "directory": "/Users/Pablo/Projects/engine",
-    "output": "build/main.o"
   }
 ]
