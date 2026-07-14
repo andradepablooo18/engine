@@ -1,9 +1,9 @@
 #include "Engine.h"
 #include "Engine_config.h"
 #include "colors.h"
+#include "internal/Input_internal.h"
 #include "internal/renderer/Renderer.h"
 #include "internal/window/Window.h"
-#include <stdio.h>
 #include <stdlib.h>
 
 struct Engine {

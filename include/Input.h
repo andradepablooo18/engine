@@ -8,10 +8,6 @@
 
 typedef struct Input Input;
 
-bool Input_create(Input** self);
-void Input_destroy(Input** self);
-void Input_begin_frame(Input* self);
-void Input_process_event(Input* self, const SDL_Event* event);
 bool Input_is_key_down(const Input* self, Key key);
 bool Input_is_key_pressed(const Input* self, Key key);
 bool Input_is_key_released(const Input* self, Key key);

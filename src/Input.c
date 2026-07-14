@@ -1,4 +1,5 @@
 #include "Input.h"
+#include "internal/Input_internal.h"
 #include <stdlib.h>
 
 struct Input {
