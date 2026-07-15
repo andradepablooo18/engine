@@ -49,7 +49,7 @@ typedef enum Key {
     KEY_9 = 38,
     KEY_0 = 39,
 
-    KEY_RETURN = 40,
+    KEY_ENTER = 40,
     KEY_ESCAPE = 41,
     KEY_BACKSPACE = 42,
     KEY_TAB = 43,
