@@ -1,0 +1,13 @@
+#ifndef MOUSEBUTTONS_H
+#define MOUSEBUTTONS_H
+
+typedef enum MouseButton {
+    MOUSE_BUTTON_LEFT = 1,
+    MOUSE_BUTTON_MIDDLE,
+    MOUSE_BUTTON_RIGHT,
+    MOUSE_BUTTON_X1,
+    MOUSE_BUTTON_X2,
+    MOUSE_BUTTON_COUNT
+} MouseButton;
+
+#endif
