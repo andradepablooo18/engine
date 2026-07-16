@@ -2,6 +2,7 @@
 #define RENDERER_H
 
 #include "internal/window/Window.h"
+#include "math/Vector2.h"
 #include "types.h"
 #include <SDL3/SDL.h>
 
@@ -11,8 +12,8 @@ bool Renderer_create(Renderer** self, Window* window);
 void Renderer_destroy(Renderer** self);
 void Renderer_clear(Renderer* self, u32 color);
 void Renderer_present(Renderer* self);
-void Renderer_draw_pixel(Renderer* self, int x, int y, u32 color);
-// Renderer_draw_line
+void Renderer_draw_pixel(Renderer* self, i32 x, i32 y, u32 color);
+void Renderer_draw_line(Renderer* self, Vector2 start, Vector2 end, u32 color);
 // Renderer_draw_triangle
 
 #endif

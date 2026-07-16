@@ -133,3 +133,7 @@ Input* Engine_get_input(Engine* e) {
 void Engine_draw_pixel(Engine* e, int x, int y, u32 color) {
     Renderer_draw_pixel(e->renderer, x, y, color);
 }
+
+void Engine_draw_line(Engine* e, Vector2 start, Vector2 end, u32 color) {
+    Renderer_draw_line(e->renderer, start, end, color);
+}

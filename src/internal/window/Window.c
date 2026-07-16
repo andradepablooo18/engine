@@ -4,12 +4,12 @@
 
 struct Window {
         SDL_Window* handle;
-        int width;
-        int height;
+        i32 width;
+        i32 height;
         char* title;
 };
 
-bool Window_create(Window** window, const char* title, int width, int height) {
+bool Window_create(Window** window, const char* title, i32 width, i32 height) {
     if (!window) {
         fprintf(stderr, "Window_create: invalid argument\n");
         return false;
@@ -68,7 +68,7 @@ SDL_Window* Window_get_handle(const Window* self) {
     return self->handle;
 }
 
-int Window_get_width(const Window* self) {
+i32 Window_get_width(const Window* self) {
     if (!self) {
         fprintf(stderr, "Window_get_width: invalid argument\n");
         return -1;
@@ -76,7 +76,7 @@ int Window_get_width(const Window* self) {
     return self->width;
 }
 
-int Window_get_height(const Window* self) {
+i32 Window_get_height(const Window* self) {
     if (!self) {
         fprintf(stderr, "Window_get_heigth: invalid argument\n");
         return -1;

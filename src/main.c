@@ -38,4 +38,9 @@ void update(Engine* e) {
     }
 }
 
-void draw(Engine* e) { Engine_draw_pixel(e, x, y, COLOR_WHITE); }
+void draw(Engine* e) {
+    // SOME CODE =)
+    Vector2 start = Vector2_create(100.0f, 100.0f);
+    Vector2 end = Vector2_create(200.0f, 0.0f);
+    Engine_draw_line(e, start, end, COLOR_RED);
+}
