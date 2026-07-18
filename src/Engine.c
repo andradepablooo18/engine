@@ -137,3 +137,11 @@ void Engine_draw_pixel(Engine* e, int x, int y, u32 color) {
 void Engine_draw_line(Engine* e, Vector2 start, Vector2 end, u32 color) {
     Renderer_draw_line(e->renderer, start, end, color);
 }
+
+void Engine_draw_triangle(Engine* e, Triangle triangle, u32 color) {
+    Renderer_draw_triangle(e->renderer, triangle, color);
+}
+
+void Engine_draw_triangle_wireframe(Engine* e, Triangle triangle, u32 color) {
+    Renderer_draw_triangle_wireframe(e->renderer, triangle, color);
+}

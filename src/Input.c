@@ -4,7 +4,6 @@
 #include "mousebuttons.h"
 #include "types.h"
 #include <stdlib.h>
-
 struct Input {
         bool current_keys[KEY_COUNT];
         bool previous_keys[KEY_COUNT];

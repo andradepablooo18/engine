@@ -9,9 +9,6 @@
 void update(Engine* e);
 void draw(Engine* e);
 
-int x = 0;
-int y = 0;
-
 int main(void) {
     Engine* e = NULL;
 
@@ -39,8 +36,8 @@ void update(Engine* e) {
 }
 
 void draw(Engine* e) {
-    // SOME CODE =)
-    Vector2 start = Vector2_create(100.0f, 100.0f);
-    Vector2 end = Vector2_create(200.0f, 0.0f);
-    Engine_draw_line(e, start, end, COLOR_RED);
+    Triangle t1 = {Vector2_create(350.0f, 350.0f),
+                   Vector2_create(700.0f, 350.0f),
+                   Vector2_create(525.0f, 100.0f)};
+    Engine_draw_triangle(e, t1, COLOR_WHITE);
 }
