@@ -9,7 +9,7 @@ typedef struct Camera {
 } Camera;
 
 // Camera Camera_create(void);
-void Camera_set_position(Camera* camera, Vector3 position);
+// void Camera_set_position(Camera* camera, Vector3 position);
 Matrix4 Camera_get_view_matrix(const Camera* camera);
 
 #endif
