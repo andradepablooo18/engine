@@ -254,7 +254,7 @@ static void Renderer_draw_line_bresenham(Renderer* self, Vector2 start,
  ************************************************
  */
 
-// Draw filled triangle using scanline rasterization algorithm
+// Draw filled triangle using scanline rasterization
 static void Renderer_draw_triangle_scanline(Renderer* self, Triangle triangle,
                                             u32 color) {
     // Sort triangle vertices based on ints y coordinate from smallest to
