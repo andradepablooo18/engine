@@ -1,4 +1,7 @@
 #include "Renderer.h"
+#include "Camera.h"
+#include "Engine_config.h"
+#include "colors.h"
 #include "math/common.h"
 #include "types.h"
 #include <_string.h>
@@ -20,6 +23,9 @@ static void Renderer_draw_line_bresenham(Renderer* self, Vector2 start,
                                          Vector2 end, u32 color);
 static void Renderer_draw_triangle_scanline(Renderer* self, Triangle triangle,
                                             u32 color);
+void Renderer_draw_object3D(Renderer* self, const Camera* camera,
+                            const Object3D* obj);
+static Vector2 viewport_transform(Vector3 v);
 static inline void Vector2_swap(Vector2* a, Vector2* b);
 static i32* Interpolate(Vector2 start, Vector2 end);
 static void sum_arrays(i32* dest, i32 d_length, const i32* src1, i32 s1_length,
@@ -157,6 +163,76 @@ void Renderer_draw_triangle(Renderer* self, Triangle triangle, u32 color) {
         return;
     }
     Renderer_draw_triangle_scanline(self, triangle, color);
+}
+
+typedef struct VertexProjected {
+        Vector3 ndc;
+        Vector2 screen;
+} VertexProjected;
+
+void Renderer_draw_object3D(Renderer* self, const Camera* camera,
+                            const Object3D* obj) {
+    if (!self || !camera || !obj) {
+        fprintf(stderr, "Renderer_draw_object3D: some argument is NULL\n");
+        return;
+    }
+
+    Matrix4 model_matrix = Transform_get_matrix(&obj->transform);
+    Matrix4 view_matrix = Camera_get_view_matrix(camera);
+    Matrix4 projection_matrix = Matrix4_perspective_projection(
+        camera->fov_y, WIDTH / (f32)HEIGHT, camera->near, camera->far);
+
+    VertexProjected* vertices =
+        calloc(obj->mesh->vertex_count, sizeof(VertexProjected));
+    if (!vertices) {
+        fprintf(stderr, "Renderer_draw_object3D: allocation failed\n");
+        return;
+    }
+
+    for (u32 i = 0; i < obj->mesh->vertex_count; i++) {
+        Vector4 local = Vector4_from_vector3(obj->mesh->vertices[i]);
+
+        // Local -> World
+        Vector4 world = Matrix4_multiply_vector(model_matrix, local);
+
+        // World -> Camera
+        Vector4 view = Matrix4_multiply_vector(view_matrix, world);
+
+        // Camera -> Clip
+        Vector4 clip = Matrix4_multiply_vector(projection_matrix, view);
+
+        // Clipping
+        // if (clip.x < -clip.w || clip.x > clip.w)
+        //     continue;
+        // if (clip.y < -clip.w || clip.y > clip.w)
+        //     continue;
+        // if (clip.z < -clip.w || clip.z > clip.w)
+        //     continue;
+
+        // Perspective divide
+        vertices[i].ndc.x = clip.x / clip.w;
+        vertices[i].ndc.y = clip.y / clip.w;
+        vertices[i].ndc.z = clip.z / clip.w;
+
+        // NDC -> Screen
+        vertices[i].screen = viewport_transform(vertices[i].ndc);
+    }
+
+    // Rasterize vertices
+    for (u32 i = 0; i < obj->mesh->index_count; i += 3) {
+        Vector2 a = vertices[obj->mesh->indices[i]].screen;
+        Vector2 b = vertices[obj->mesh->indices[i + 1]].screen;
+        Vector2 c = vertices[obj->mesh->indices[i + 2]].screen;
+        Renderer_draw_line(self, a, b, COLOR_WHITE);
+        Renderer_draw_line(self, b, c, COLOR_WHITE);
+        Renderer_draw_line(self, c, a, COLOR_WHITE);
+    }
+
+    free(vertices);
+}
+
+static Vector2 viewport_transform(Vector3 v) {
+    return (Vector2){(v.x + 1.0f) * WIDTH * 0.5f, (1.0f - v.y) * HEIGHT * 0.5f};
 }
 
 /*

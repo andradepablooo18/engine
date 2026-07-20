@@ -145,3 +145,8 @@ void Engine_draw_triangle(Engine* e, Triangle triangle, u32 color) {
 void Engine_draw_triangle_wireframe(Engine* e, Triangle triangle, u32 color) {
     Renderer_draw_triangle_wireframe(e->renderer, triangle, color);
 }
+
+void Engine_draw_object3D(const Engine* e, const Camera* camera,
+                          const Object3D* obj) {
+    Renderer_draw_object3D(e->renderer, camera, obj);
+}

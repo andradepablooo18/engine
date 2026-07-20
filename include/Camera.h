@@ -7,6 +7,9 @@
 
 typedef struct Camera {
         Transform transform;
+        f32 fov_y; // in radians
+        f32 near;
+        f32 far;
 } Camera;
 
 void Camera_create(Camera* self);
