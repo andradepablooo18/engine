@@ -2,11 +2,15 @@
 #include "math/Matrix4.h"
 #include <stdio.h>
 
+/* Transform_identity: returns a transform with default values in postion, scale
+ * and rotation */
 Transform Transform_identity(void) {
     return (Transform){
         .position = {0, 0, 0}, .scale = {1, 1, 1}, .rotation = {0, 0, 0}};
 }
 
+/* Transform_get_matrix: returns a model matrix that when applied to an object
+ * brings it from object space to world space */
 Matrix4 Transform_get_matrix(const Transform* transform) {
     if (!transform) {
         fprintf(stderr, "Transform_get_matrix: Transform* is NULL\n");

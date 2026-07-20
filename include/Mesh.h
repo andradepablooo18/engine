@@ -12,5 +12,6 @@ typedef struct Mesh {
 } Mesh;
 
 void Mesh_create_cube(Mesh* self);
+void Mesh_destroy(Mesh** self);
 
 #endif

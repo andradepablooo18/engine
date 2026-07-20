@@ -9,4 +9,7 @@ typedef struct Object3D {
         Transform transform;
 } Object3D;
 
+void Object3D_create_cube(Object3D* obj);
+void Object3D_destroy(Object3D* obj);
+
 #endif

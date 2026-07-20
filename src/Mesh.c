@@ -46,3 +46,19 @@ void Mesh_create_cube(Mesh* self) {
 
     memcpy(self->indices, indices, sizeof(indices));
 }
+
+void Mesh_destroy(Mesh** self) {
+    if (!self || !*self)
+        return;
+    Mesh* const s = *self;
+    if (s->vertices) {
+        free(s->vertices);
+        s->vertices = NULL;
+    }
+    if (s->indices) {
+        free(s->indices);
+        s->indices = NULL;
+    }
+    free(s);
+    *self = NULL;
+}
