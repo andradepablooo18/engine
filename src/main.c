@@ -19,10 +19,21 @@ void update(Engine* e);
 void draw(Engine* e);
 void destroy(void);
 
-Camera camera;
-Object3D cube;
-
 int main(void) {
+    Mesh* cube_mesh = NULL;
+    if (!Mesh_create_cube(&cube_mesh)) {
+        return EXIT_FAILURE;
+    }
+
+    Object3D* cube;
+    if (!Object3D_create(&cube)) {
+        return EXIT_FAILURE;
+    }
+    Object3D_set_mesh(cube, cube_mesh);
+
+    Object3D_destroy(&cube);
+    Mesh_destroy(&cube_mesh);
+
     Engine* e = NULL;
 
     if (!Engine_create(&e)) {

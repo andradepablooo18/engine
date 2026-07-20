@@ -1,6 +1,8 @@
 #include "Renderer.h"
 #include "Camera.h"
 #include "Engine_config.h"
+#include "Mesh.h"
+#include "Object3D.h"
 #include "colors.h"
 #include "math/common.h"
 #include "types.h"
@@ -23,8 +25,6 @@ static void Renderer_draw_line_bresenham(Renderer* self, Vector2 start,
                                          Vector2 end, u32 color);
 static void Renderer_draw_triangle_scanline(Renderer* self, Triangle triangle,
                                             u32 color);
-void Renderer_draw_object3D(Renderer* self, const Camera* camera,
-                            const Object3D* obj);
 static Vector2 viewport_transform(Vector3 v);
 static inline void Vector2_swap(Vector2* a, Vector2* b);
 static i32* Interpolate(Vector2 start, Vector2 end);
@@ -177,20 +177,24 @@ void Renderer_draw_object3D(Renderer* self, const Camera* camera,
         return;
     }
 
-    Matrix4 model_matrix = Transform_get_matrix(&obj->transform);
+    Transform transform = Object3D_get_transform(obj);
+    Matrix4 model_matrix = Transform_get_matrix(&transform);
     Matrix4 view_matrix = Camera_get_view_matrix(camera);
     Matrix4 projection_matrix = Matrix4_perspective_projection(
         camera->fov_y, WIDTH / (f32)HEIGHT, camera->near, camera->far);
 
-    VertexProjected* vertices =
-        calloc(obj->mesh->vertex_count, sizeof(VertexProjected));
+    Mesh* mesh = Object3D_get_mesh(obj);
+    Vector3* mesh_vertices = Mesh_get_vertices(mesh);
+    u32 vertex_count = Mesh_get_vertex_count(mesh);
+
+    VertexProjected* vertices = calloc(vertex_count, sizeof(VertexProjected));
     if (!vertices) {
         fprintf(stderr, "Renderer_draw_object3D: allocation failed\n");
         return;
     }
 
-    for (u32 i = 0; i < obj->mesh->vertex_count; i++) {
-        Vector4 local = Vector4_from_vector3(obj->mesh->vertices[i]);
+    for (u32 i = 0; i < vertex_count; i++) {
+        Vector4 local = Vector4_from_vector3(mesh_vertices[i]);
 
         // Local -> World
         Vector4 world = Matrix4_multiply_vector(model_matrix, local);

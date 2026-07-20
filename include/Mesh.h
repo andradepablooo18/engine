@@ -3,15 +3,13 @@
 
 #include "math/Vector3.h"
 #include "types.h"
+#include <stdbool.h>
 
-typedef struct Mesh {
-        Vector3* vertices;
-        u32 vertex_count;
-        u32* indices;
-        u32 index_count;
-} Mesh;
+typedef struct Mesh Mesh;
 
-void Mesh_create_cube(Mesh* self);
+bool Mesh_create_cube(Mesh** self);
 void Mesh_destroy(Mesh** self);
+Vector3* Mesh_get_vertices(Mesh* self);
+u32 Mesh_get_vertex_count(Mesh* self);
 
 #endif
