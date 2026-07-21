@@ -31,3 +31,15 @@ Matrix4 Transform_get_matrix(const Transform* transform) {
 
     return Matrix4_multiply(translation, Matrix4_multiply(rotation, scale));
 }
+
+void Transform_translate(Transform* transform, Vector3 delta) {
+    transform->position.x += delta.x;
+    transform->position.y += delta.y;
+    transform->position.z += delta.z;
+}
+
+void Transform_scale(Transform* transform, Vector3 delta) {
+    transform->scale.x += transform->scale.x * delta.x;
+    transform->scale.y += transform->scale.y * delta.y;
+    transform->scale.z += transform->scale.z * delta.z;
+}

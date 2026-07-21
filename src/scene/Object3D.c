@@ -19,7 +19,6 @@ bool Object3D_create(Object3D** self) {
     }
     (*self)->mesh = NULL;
     (*self)->transform = Transform_identity();
-    (*self)->transform.position.z = -10; // just for testing
     return true;
 }
 
@@ -29,6 +28,14 @@ void Object3D_destroy(Object3D** self) {
     Object3D* obj = *self;
     free(obj);
     *self = NULL;
+}
+
+void Object3D_set_position(Object3D* self, Vector3 position) {
+    if (!self) {
+        fprintf(stderr, "Object3D_set_mesh: Object3D* is NULL\n");
+        return;
+    }
+    self->transform.position = position;
 }
 
 void Object3D_set_mesh(Object3D* self, Mesh* mesh) {
@@ -53,4 +60,12 @@ Transform Object3D_get_transform(const Object3D* self) {
         return (Transform){0};
     }
     return self->transform;
+}
+
+void Object3D_translate(Object3D* self, Vector3 delta) {
+    Transform_translate(&self->transform, delta);
+}
+
+void Object3D_scale(Object3D* self, Vector3 delta) {
+    Transform_scale(&self->transform, delta);
 }
