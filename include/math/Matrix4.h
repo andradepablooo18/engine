@@ -1,8 +1,8 @@
 #ifndef MATRIX4_H
 #define MATRIX4_H
 
-#include "Vector4.h"
-#include <types.h>
+#include "core/types.h"
+#include "math/Vector4.h"
 
 typedef struct Matrix4 {
         f32 m[4][4];

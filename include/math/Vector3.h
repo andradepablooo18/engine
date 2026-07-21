@@ -1,7 +1,7 @@
 #ifndef VECTOR3_H
 #define VECTOR3_H
 
-#include "types.h"
+#include "core/types.h"
 #include <stdbool.h>
 
 typedef struct Vector3 {

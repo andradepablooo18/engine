@@ -1,7 +1,7 @@
 #ifndef INPUT_INTERNAL_H
 #define INPUT_INTERNAL_H
 
-#include "Input.h"
+#include "input/Input.h"
 #include <SDL3/SDL.h>
 #include <stdbool.h>
 

@@ -1,8 +1,8 @@
 #ifndef VECTOR2_H
 #define VECTOR2_H
 
+#include "core/types.h"
 #include <stdbool.h>
-#include <types.h>
 
 typedef struct Vector2 {
         f32 x;
@@ -21,5 +21,11 @@ f32 Vector2_distance(Vector2 a, Vector2 b);
 bool Vector2_equals(Vector2 a, Vector2 b, f32 epsilon);
 f32 Vector2_dot_product(Vector2 a, Vector2 b);
 f32 Vector2_cross_product(Vector2 a, Vector2 b);
+
+static inline void Vector2_swap(Vector2* a, Vector2* b) {
+    Vector2 temp = *a;
+    *a = *b;
+    *b = temp;
+}
 
 #endif

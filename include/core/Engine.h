@@ -1,11 +1,11 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
-#include "Camera.h"
-#include "Input.h"
-#include "Object3D.h"
 #include "geometry/Triangle.h"
+#include "graphics/Camera.h"
+#include "input/Input.h"
 #include "math/Vector2.h"
+#include "scene/Object3D.h"
 #include "types.h"
 #include <stdbool.h>
 

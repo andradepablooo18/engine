@@ -1,5 +1,4 @@
 #include "math/Vector2.h"
-#include "types.h"
 #include <math.h>
 
 Vector2 Vector2_create(f32 x, f32 y) { return (Vector2){x, y}; }

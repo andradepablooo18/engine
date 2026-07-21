@@ -1,4 +1,4 @@
-#include "Mesh.h"
+#include "graphics/Mesh.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -84,4 +84,20 @@ u32 Mesh_get_vertex_count(Mesh* self) {
         return -1;
     }
     return self->vertex_count;
+}
+
+u32* Mesh_get_indices(Mesh* self) {
+    if (!self) {
+        fprintf(stderr, "Mesh_get_indices: Mesh* is NULL\n");
+        return NULL;
+    }
+    return self->indices;
+}
+
+u32 Mesh_get_index_count(Mesh* self) {
+    if (!self) {
+        fprintf(stderr, "Mesh_get_index_count: Mesh* is NULL\n");
+        return -1;
+    }
+    return self->index_count;
 }

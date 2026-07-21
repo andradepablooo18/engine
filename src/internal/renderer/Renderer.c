@@ -1,12 +1,8 @@
 #include "Renderer.h"
-#include "Camera.h"
-#include "Engine_config.h"
-#include "Mesh.h"
-#include "Object3D.h"
-#include "colors.h"
+#include "core/colors.h" // THIS SHOULD NOT BE HERE BRUH
+#include "graphics/Mesh.h"
+#include "graphics/VertexOut.h"
 #include "math/common.h"
-#include "types.h"
-#include <_string.h>
 #include <math.h>
 #include <stdlib.h>
 
@@ -19,17 +15,41 @@ struct Renderer {
         i32 height;
 };
 
-static void Renderer_draw_line_DDA(Renderer* self, Vector2 start, Vector2 end,
+/*
+ * Draws pixel with some color in color_buffer but doesn't check for self
+ * Renderer instance
+ *
+ * @param self Renderer instance.
+ * @param x X coordinate in color_buffer.
+ * @param y Y coordinate in color_buffer.
+ * @param color Color in RGBA to set in color_buffer at x and y.
+ */
+static inline void draw_pixel(Renderer* self, i32 x, i32 y, u32 color);
+
+/*
+ * Draws line from start to end with a color in color_buffer (frame_buffer) but
+ * doesn't check for self Renderer instance
+ *
+ * @param self Renderer instance.
+ * @param start Start point of line.
+ * @param end End point of line.
+ * @param color Color in RGBA of the line
+ */
+static void draw_line(Renderer* self, Vector2 start, Vector2 end, u32 color);
+
+static void draw_line_DDA(Renderer* self, Vector2 start, Vector2 end,
+                          u32 color);
+static void draw_line_bresenham(Renderer* self, Vector2 start, Vector2 end,
+                                u32 color);
+static void draw_triangle_scanline(Renderer* self, Triangle triangle,
                                    u32 color);
-static void Renderer_draw_line_bresenham(Renderer* self, Vector2 start,
-                                         Vector2 end, u32 color);
-static void Renderer_draw_triangle_scanline(Renderer* self, Triangle triangle,
-                                            u32 color);
-static Vector2 viewport_transform(Vector3 v);
-static inline void Vector2_swap(Vector2* a, Vector2* b);
-static i32* Interpolate(Vector2 start, Vector2 end);
-static void sum_arrays(i32* dest, i32 d_length, const i32* src1, i32 s1_length,
-                       const i32* src2, i32 s2_length);
+
+static Vector2 viewport_transform(Renderer* self, Vector3 v);
+
+// static i32* Interpolate(Vector2 start, Vector2 end);
+// static void sum_arrays(i32* dest, i32 d_length, const i32* src1, i32
+// s1_length,
+//                        const i32* src2, i32 s2_length);
 
 bool Renderer_create(Renderer** self, Window* window) {
     if (!self) {
@@ -142,8 +162,8 @@ void Renderer_draw_line(Renderer* self, Vector2 start, Vector2 end, u32 color) {
         fprintf(stderr, "Renderer_draw_line: argument is NULL\n");
         return;
     }
-    // Renderer_draw_line_DDA(self, x1, y1, x2, y2, color);
-    Renderer_draw_line_bresenham(self, start, end, color);
+    // draw_line_DDA(self, x1, y1, x2, y2, color);
+    draw_line_bresenham(self, start, end, color);
 }
 
 void Renderer_draw_triangle_wireframe(Renderer* self, Triangle triangle,
@@ -152,9 +172,9 @@ void Renderer_draw_triangle_wireframe(Renderer* self, Triangle triangle,
         fprintf(stderr, "Renderer_draw_triangle_wireframe: argument is NULL\n");
         return;
     }
-    Renderer_draw_line(self, triangle.p0, triangle.p1, color);
-    Renderer_draw_line(self, triangle.p1, triangle.p2, color);
-    Renderer_draw_line(self, triangle.p0, triangle.p2, color);
+    draw_line(self, triangle.p0, triangle.p1, color);
+    draw_line(self, triangle.p1, triangle.p2, color);
+    draw_line(self, triangle.p0, triangle.p2, color);
 }
 
 void Renderer_draw_triangle(Renderer* self, Triangle triangle, u32 color) {
@@ -162,13 +182,8 @@ void Renderer_draw_triangle(Renderer* self, Triangle triangle, u32 color) {
         fprintf(stderr, "Renderer_draw_triangle: argument is NULL\n");
         return;
     }
-    Renderer_draw_triangle_scanline(self, triangle, color);
+    draw_triangle_scanline(self, triangle, color);
 }
-
-typedef struct VertexProjected {
-        Vector3 ndc;
-        Vector2 screen;
-} VertexProjected;
 
 void Renderer_draw_object3D(Renderer* self, const Camera* camera,
                             const Object3D* obj) {
@@ -180,14 +195,23 @@ void Renderer_draw_object3D(Renderer* self, const Camera* camera,
     Transform transform = Object3D_get_transform(obj);
     Matrix4 model_matrix = Transform_get_matrix(&transform);
     Matrix4 view_matrix = Camera_get_view_matrix(camera);
-    Matrix4 projection_matrix = Matrix4_perspective_projection(
-        camera->fov_y, WIDTH / (f32)HEIGHT, camera->near, camera->far);
 
+    // Get camera value in order to get projection matrix
+    f32 fov_y = Camera_get_fov(camera);
+    f32 near = Camera_get_near(camera);
+    f32 far = Camera_get_far(camera);
+    Matrix4 projection_matrix = Matrix4_perspective_projection(
+        fov_y, self->width / (f32)self->height, near, far);
+
+    // Get object mesh
     Mesh* mesh = Object3D_get_mesh(obj);
+    // Get mesh attributes
     Vector3* mesh_vertices = Mesh_get_vertices(mesh);
     u32 vertex_count = Mesh_get_vertex_count(mesh);
+    u32* mesh_indices = Mesh_get_indices(mesh);
+    u32 index_count = Mesh_get_index_count(mesh);
 
-    VertexProjected* vertices = calloc(vertex_count, sizeof(VertexProjected));
+    VertexOut* vertices = calloc(vertex_count, sizeof(VertexOut));
     if (!vertices) {
         fprintf(stderr, "Renderer_draw_object3D: allocation failed\n");
         return;
@@ -219,24 +243,20 @@ void Renderer_draw_object3D(Renderer* self, const Camera* camera,
         vertices[i].ndc.z = clip.z / clip.w;
 
         // NDC -> Screen
-        vertices[i].screen = viewport_transform(vertices[i].ndc);
+        vertices[i].screen = viewport_transform(self, vertices[i].ndc);
     }
 
     // Rasterize vertices
-    for (u32 i = 0; i < obj->mesh->index_count; i += 3) {
-        Vector2 a = vertices[obj->mesh->indices[i]].screen;
-        Vector2 b = vertices[obj->mesh->indices[i + 1]].screen;
-        Vector2 c = vertices[obj->mesh->indices[i + 2]].screen;
-        Renderer_draw_line(self, a, b, COLOR_WHITE);
-        Renderer_draw_line(self, b, c, COLOR_WHITE);
-        Renderer_draw_line(self, c, a, COLOR_WHITE);
+    for (u32 i = 0; i < index_count; i += 3) {
+        Vector2 a = vertices[mesh_indices[i]].screen;
+        Vector2 b = vertices[mesh_indices[i + 1]].screen;
+        Vector2 c = vertices[mesh_indices[i + 2]].screen;
+        draw_line(self, a, b, COLOR_WHITE);
+        draw_line(self, b, c, COLOR_WHITE);
+        draw_line(self, c, a, COLOR_WHITE);
     }
 
     free(vertices);
-}
-
-static Vector2 viewport_transform(Vector3 v) {
-    return (Vector2){(v.x + 1.0f) * WIDTH * 0.5f, (1.0f - v.y) * HEIGHT * 0.5f};
 }
 
 /*
@@ -249,6 +269,17 @@ static Vector2 viewport_transform(Vector3 v) {
  ************************************************
  */
 
+static inline void draw_pixel(Renderer* self, i32 x, i32 y, u32 color) {
+    if (x < 0 || x >= self->width || y < 0 || y >= self->height)
+        return;
+    self->color_buffer[y * self->width + x] = color;
+}
+
+static void draw_line(Renderer* self, Vector2 start, Vector2 end, u32 color) {
+    // draw_line_DDA(self, x1, y1, x2, y2, color);
+    draw_line_bresenham(self, start, end, color);
+}
+
 /*
  ************************************************
  *
@@ -257,8 +288,8 @@ static Vector2 viewport_transform(Vector3 v) {
  ************************************************
  */
 
-static void Renderer_draw_line_DDA(Renderer* self, Vector2 start, Vector2 end,
-                                   u32 color) {
+static void draw_line_DDA(Renderer* self, Vector2 start, Vector2 end,
+                          u32 color) {
     i32 x1 = (i32)roundf(start.x);
     i32 y1 = (i32)roundf(start.y);
 
@@ -273,7 +304,7 @@ static void Renderer_draw_line_DDA(Renderer* self, Vector2 start, Vector2 end,
     i32 steps = abs_dx > abs_dy ? abs_dx : abs_dy;
 
     if (steps == 0) {
-        Renderer_draw_pixel(self, x1, y1, color);
+        draw_pixel(self, x1, y1, color);
         return;
     }
 
@@ -284,14 +315,14 @@ static void Renderer_draw_line_DDA(Renderer* self, Vector2 start, Vector2 end,
     f32 y = (f32)y1;
 
     for (i32 i = 0; i <= steps; i++) {
-        Renderer_draw_pixel(self, (i32)roundf(x), (i32)roundf(y), color);
+        draw_pixel(self, (i32)roundf(x), (i32)roundf(y), color);
         x += x_inc;
         y += y_inc;
     }
 }
 
-static void Renderer_draw_line_bresenham(Renderer* self, Vector2 start,
-                                         Vector2 end, u32 color) {
+static void draw_line_bresenham(Renderer* self, Vector2 start, Vector2 end,
+                                u32 color) {
     i32 x1 = (i32)roundf(start.x);
     i32 y1 = (i32)roundf(start.y);
 
@@ -307,7 +338,7 @@ static void Renderer_draw_line_bresenham(Renderer* self, Vector2 start,
     i32 err = dx - dy;
 
     while (true) {
-        Renderer_draw_pixel(self, x1, y1, color);
+        draw_pixel(self, x1, y1, color);
 
         if (x1 == x2 && y1 == y2)
             break;
@@ -335,8 +366,8 @@ static void Renderer_draw_line_bresenham(Renderer* self, Vector2 start,
  */
 
 // Draw filled triangle using scanline rasterization
-static void Renderer_draw_triangle_scanline(Renderer* self, Triangle triangle,
-                                            u32 color) {
+static void draw_triangle_scanline(Renderer* self, Triangle triangle,
+                                   u32 color) {
     // Sort triangle vertices based on ints y coordinate from smallest to
     // biggest so that p0.y <= p1.y <= p2.y
     if (triangle.p0.y > triangle.p1.y)
@@ -368,7 +399,7 @@ static void Renderer_draw_triangle_scanline(Renderer* self, Triangle triangle,
         x1 = (i32)roundf(x_right);
         y0 = (i32)roundf(triangle.p0.y);
         for (i32 x = x0; x <= x1; x++) {
-            Renderer_draw_pixel(self, x, y0, color);
+            draw_pixel(self, x, y0, color);
         }
         return;
     }
@@ -423,7 +454,7 @@ static void Renderer_draw_triangle_scanline(Renderer* self, Triangle triangle,
         i32 x1 = (i32)roundf(x_right);
 
         for (i32 x = x0; x <= x1; x++) {
-            Renderer_draw_pixel(self, x, y, color);
+            draw_pixel(self, x, y, color);
         }
 
         x_left += x_left_step;
@@ -454,7 +485,7 @@ static void Renderer_draw_triangle_scanline(Renderer* self, Triangle triangle,
         i32 x1 = (i32)roundf(x_right);
 
         for (i32 x = x0; x <= x1; x++) {
-            Renderer_draw_pixel(self, x, y, color);
+            draw_pixel(self, x, y, color);
         }
 
         x_left += x_left_step;
@@ -462,59 +493,59 @@ static void Renderer_draw_triangle_scanline(Renderer* self, Triangle triangle,
     }
 }
 
-static inline void Vector2_swap(Vector2* a, Vector2* b) {
-    Vector2 temp = *a;
-    *a = *b;
-    *b = temp;
+static Vector2 viewport_transform(Renderer* self, Vector3 v) {
+    return (Vector2){(v.x + 1.0f) * self->width * 0.5f,
+                     (1.0f - v.y) * self->height * 0.5f};
 }
 
 // Interpolates all x values between start and end
-static i32* Interpolate(Vector2 start, Vector2 end) {
-    i32 x1 = (i32)roundf(start.x);
-    i32 y1 = (i32)roundf(start.y);
-
-    i32 x2 = (i32)roundf(end.x);
-    i32 y2 = (i32)roundf(end.y);
-
-    i32 dx = x2 - x1;
-    i32 dy = y2 - y1;
-
-    i32* x_values = calloc(abs(dy) + 1, sizeof(i32));
-    if (!x_values)
-        return NULL;
-
-    if (dy <= 0) {
-        x_values[0] = start.x;
-        return x_values;
-    }
-
-    f32 slope = dx / (f32)dy;
-
-    f32 x = x1;
-
-    for (i32 y = y1; y <= y2; y++) {
-        x_values[y - y1] = (i32)roundf(x);
-        x += slope;
-    }
-
-    return x_values;
-}
-
-static void sum_arrays(i32* dest, i32 d_length, const i32* src1, i32 s1_length,
-                       const i32* src2, i32 s2_length) {
-    if (!dest || !src1 || !src2) {
-        fprintf(stderr, "sum_arrays: some i32 array is NULL\n");
-        return;
-    }
-    if (d_length < s1_length + s2_length) {
-        fprintf(stderr, "sum_arrays: destination array is too small\n");
-        return;
-    }
-
-    for (i32 i = 0; i < s1_length; i++) {
-        dest[i] = src1[i];
-    }
-    for (i32 i = 0; i < s2_length; i++) {
-        dest[i + s1_length] = src2[i];
-    }
-}
+// static i32* Interpolate(Vector2 start, Vector2 end) {
+//     i32 x1 = (i32)roundf(start.x);
+//     i32 y1 = (i32)roundf(start.y);
+//
+//     i32 x2 = (i32)roundf(end.x);
+//     i32 y2 = (i32)roundf(end.y);
+//
+//     i32 dx = x2 - x1;
+//     i32 dy = y2 - y1;
+//
+//     i32* x_values = calloc(abs(dy) + 1, sizeof(i32));
+//     if (!x_values)
+//         return NULL;
+//
+//     if (dy <= 0) {
+//         x_values[0] = start.x;
+//         return x_values;
+//     }
+//
+//     f32 slope = dx / (f32)dy;
+//
+//     f32 x = x1;
+//
+//     for (i32 y = y1; y <= y2; y++) {
+//         x_values[y - y1] = (i32)roundf(x);
+//         x += slope;
+//     }
+//
+//     return x_values;
+// }
+//
+// static void sum_arrays(i32* dest, i32 d_length, const i32* src1, i32
+// s1_length,
+//                        const i32* src2, i32 s2_length) {
+//     if (!dest || !src1 || !src2) {
+//         fprintf(stderr, "sum_arrays: some i32 array is NULL\n");
+//         return;
+//     }
+//     if (d_length < s1_length + s2_length) {
+//         fprintf(stderr, "sum_arrays: destination array is too small\n");
+//         return;
+//     }
+//
+//     for (i32 i = 0; i < s1_length; i++) {
+//         dest[i] = src1[i];
+//     }
+//     for (i32 i = 0; i < s2_length; i++) {
+//         dest[i + s1_length] = src2[i];
+//     }
+// }

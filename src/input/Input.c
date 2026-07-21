@@ -1,9 +1,8 @@
-#include "Input.h"
+#include "input/Input.h"
+#include "core/types.h"
 #include "internal/Input_internal.h"
-#include "keys.h"
-#include "mousebuttons.h"
-#include "types.h"
 #include <stdlib.h>
+
 struct Input {
         bool current_keys[KEY_COUNT];
         bool previous_keys[KEY_COUNT];

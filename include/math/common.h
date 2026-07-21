@@ -1,7 +1,7 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include "types.h"
+#include "core/types.h"
 
 #define PI 3.14159265358979323946f
 #define TWO_PI (PI * 2.0f)

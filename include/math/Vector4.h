@@ -1,8 +1,8 @@
 #ifndef VECTOR4_H
 #define VECTOR4_H
 
+#include "core/types.h"
 #include "math/Vector3.h"
-#include <types.h>
 
 typedef union Vector4 {
         struct {

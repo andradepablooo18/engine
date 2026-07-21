@@ -1,5 +1,4 @@
-#include "Transform.h"
-#include "math/Matrix4.h"
+#include "scene/Transform.h"
 #include <stdio.h>
 
 /* Transform_identity: returns a transform with default values in postion, scale

@@ -1,8 +1,8 @@
 #ifndef OBJECT3D_H
 #define OBJECT3D_H
 
-#include "Mesh.h"
 #include "Transform.h"
+#include "graphics/Mesh.h"
 #include <stdbool.h>
 
 typedef struct Object3D Object3D;
