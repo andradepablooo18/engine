@@ -1,5 +1,4 @@
 #include "input/Input.h"
-#include "core/types.h"
 #include "internal/Input_internal.h"
 #include <stdlib.h>
 
@@ -11,6 +10,8 @@ struct Input {
         int mouse_y;
         bool current_mouse_buttons[MOUSE_BUTTON_COUNT];
         bool previous_mouse_buttons[MOUSE_BUTTON_COUNT];
+        f32 wheel_x;
+        f32 wheel_y;
 };
 
 static Key SDL_to_key(SDL_Scancode key);
@@ -60,6 +61,8 @@ void Input_begin_frame(Input* self) {
            sizeof(self->previous_keys));
     memcpy(self->previous_mouse_buttons, self->current_mouse_buttons,
            sizeof(self->previous_mouse_buttons));
+    self->wheel_x = 0.0f;
+    self->wheel_y = 0.0f;
 }
 
 void Input_process_event(Input* self, const SDL_Event* event) {
@@ -72,6 +75,10 @@ void Input_process_event(Input* self, const SDL_Event* event) {
         case SDL_EVENT_MOUSE_MOTION:
             self->mouse_x = event->motion.x;
             self->mouse_y = event->motion.y;
+            break;
+        case SDL_EVENT_MOUSE_WHEEL:
+            self->wheel_x = event->wheel.x;
+            self->wheel_y = event->wheel.y;
             break;
         case SDL_EVENT_MOUSE_BUTTON_DOWN: {
             MouseButton button = SDL_to_mouse_button(event->button.button);
@@ -357,4 +364,22 @@ void Input_get_mouse_position(const Input* self, int* x, int* y) {
     }
     *x = self->mouse_x;
     *y = self->mouse_y;
+}
+
+f32 Input_get_wheel_x(const Input* self) {
+    if (!self) {
+        fprintf(stderr,
+                "Input_get_wheel_x: invalid argument (Input* is NULL)\n");
+        return 0.0f;
+    }
+    return self->wheel_x;
+}
+
+f32 Input_get_wheel_y(const Input* self) {
+    if (!self) {
+        fprintf(stderr,
+                "Input_get_wheel_y: invalid argument (Input* is NULL)\n");
+        return 0.0f;
+    }
+    return self->wheel_y;
 }
