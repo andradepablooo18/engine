@@ -12,7 +12,7 @@
 typedef struct Engine Engine;
 
 typedef struct EngineCallbacks {
-        void (*update)(Engine*);
+        void (*update)(Input*, f32 dt);
         void (*draw)(Engine*);
 } EngineCallbacks;
 

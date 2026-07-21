@@ -11,12 +11,17 @@ struct Engine {
         Renderer* renderer;
         Input* input;
         SDL_Event event;
+
+        Uint64 previous_time;
+        Uint64 current_time;
+
         bool is_running;
 };
 
 static void Engine_process_input(Engine* self);
 // static void Engine_update(Engine* e);
 // static void Engine_draw(Engine* e);
+static f32 get_delta_time(Uint64* previous_time);
 
 bool Engine_create(Engine** engine) {
     if (!engine) {
@@ -87,17 +92,28 @@ void Engine_run(Engine* e, const EngineCallbacks* callbacks) {
         return;
     }
 
+    Uint64 previous_time = SDL_GetTicksNS();
+
     while (e->is_running) {
+        f32 dt = get_delta_time(&previous_time);
+
         Engine_process_input(e);
 
         if (callbacks->update)
-            callbacks->update(e);
+            callbacks->update(e->input, dt);
 
         Renderer_clear(e->renderer, COLOR_BLACK);
         if (callbacks->draw)
             callbacks->draw(e);
         Renderer_present(e->renderer);
     }
+}
+
+static f32 get_delta_time(Uint64* previous_time) {
+    Uint64 current_time = SDL_GetTicksNS();
+    f32 dt = (current_time - *previous_time) / 1000000000.0f;
+    *previous_time = current_time;
+    return dt;
 }
 
 static void Engine_process_input(Engine* self) {
