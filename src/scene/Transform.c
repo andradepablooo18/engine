@@ -43,3 +43,9 @@ void Transform_scale(Transform* transform, Vector3 delta) {
     transform->scale.y += transform->scale.y * delta.y;
     transform->scale.z += transform->scale.z * delta.z;
 }
+
+void Transform_rotate(Transform* transform, Vector3 delta) {
+    transform->rotation.x += delta.x;
+    transform->rotation.y += delta.y;
+    transform->rotation.z += delta.z;
+}

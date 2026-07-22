@@ -14,5 +14,6 @@ Transform Transform_identity(void);
 Matrix4 Transform_get_matrix(const Transform* transform);
 void Transform_translate(Transform* transform, Vector3 delta);
 void Transform_scale(Transform* transform, Vector3 delta);
+void Transform_rotate(Transform* transform, Vector3 delta);
 
 #endif

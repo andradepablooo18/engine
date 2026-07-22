@@ -18,5 +18,6 @@ Transform Object3D_get_transform(const Object3D* self);
 
 void Object3D_translate(Object3D* self, Vector3 delta);
 void Object3D_scale(Object3D* self, Vector3 delta);
+void Object3D_rotate(Object3D* self, Vector3 delta);
 
 #endif
