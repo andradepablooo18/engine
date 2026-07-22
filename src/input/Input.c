@@ -8,6 +8,8 @@ struct Input {
 
         int mouse_x;
         int mouse_y;
+        int mouse_delta_x;
+        int mouse_delta_y;
         bool current_mouse_buttons[MOUSE_BUTTON_COUNT];
         bool previous_mouse_buttons[MOUSE_BUTTON_COUNT];
         f32 wheel_x;
@@ -73,6 +75,8 @@ void Input_process_event(Input* self, const SDL_Event* event) {
     }
     switch (event->type) {
         case SDL_EVENT_MOUSE_MOTION:
+            self->mouse_delta_x = event->motion.x - self->mouse_x;
+            self->mouse_delta_y = event->motion.y - self->mouse_y;
             self->mouse_x = event->motion.x;
             self->mouse_y = event->motion.y;
             break;
@@ -356,14 +360,23 @@ bool Input_is_mouse_button_released(const Input* self, MouseButton button) {
            self->previous_mouse_buttons[button];
 }
 
-void Input_get_mouse_position(const Input* self, int* x, int* y) {
-    if (!self || !x || !y) {
-        fprintf(stderr, "Input_get_mouse_position: invalid argument (Input* or "
-                        "int* is NULL)\n");
-        return;
+Vector2 Input_get_mouse_position(const Input* self) {
+    if (!self) {
+        fprintf(
+            stderr,
+            "Input_get_mouse_position: invalid argument (Input* is NULL)\n");
+        return (Vector2){-1.0f, -1.0f};
     }
-    *x = self->mouse_x;
-    *y = self->mouse_y;
+    return (Vector2){self->mouse_x, self->mouse_y};
+}
+
+Vector2 Input_get_mouse_delta_position(const Input* self) {
+    if (!self) {
+        fprintf(stderr, "Input_get_mouse_delta_position: invalid argument "
+                        "(Input* is NULL)\n");
+        return (Vector2){-1.0f, -1.0f};
+    }
+    return (Vector2){self->mouse_delta_x, self->mouse_delta_y};
 }
 
 f32 Input_get_wheel_x(const Input* self) {

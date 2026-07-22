@@ -3,6 +3,7 @@
 
 #include "core/types.h"
 #include "keys.h"
+#include "math/Vector2.h"
 #include "mousebuttons.h"
 #include <stdbool.h>
 
@@ -32,7 +33,8 @@ bool Input_is_mouse_button_down(const Input* self, MouseButton button);
 bool Input_is_mouse_button_pressed(const Input* self, MouseButton button);
 bool Input_is_mouse_button_released(const Input* self, MouseButton button);
 
-void Input_get_mouse_position(const Input* self, int* x, int* y);
+Vector2 Input_get_mouse_position(const Input* self);
+Vector2 Input_get_mouse_delta_position(const Input* self);
 
 /*
  ************************************************
