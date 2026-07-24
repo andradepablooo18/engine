@@ -1,6 +1,7 @@
 #include "core/Engine.h"
 #include "core/Engine_config.h"
 #include "core/colors.h"
+#include "graphics/RasterMode.h"
 #include "internal/Input_internal.h"
 #include "internal/renderer/Renderer.h"
 #include "internal/window/Window.h"
@@ -19,8 +20,6 @@ struct Engine {
 };
 
 static void Engine_process_input(Engine* self);
-// static void Engine_update(Engine* e);
-// static void Engine_draw(Engine* e);
 static f32 get_delta_time(Uint64* previous_time);
 
 bool Engine_create(Engine** engine) {
@@ -48,7 +47,8 @@ bool Engine_create(Engine** engine) {
         return false;
     }
 
-    if (!Renderer_create(&e->renderer, e->window)) {
+    // Rasterization mode is wireframe by default
+    if (!Renderer_create(&e->renderer, e->window, RASTER_MODE_WIREFRAME)) {
         Engine_destroy(engine);
         return false;
     }
@@ -109,12 +109,71 @@ void Engine_run(Engine* e, const EngineCallbacks* callbacks) {
     }
 }
 
-static f32 get_delta_time(Uint64* previous_time) {
-    Uint64 current_time = SDL_GetTicksNS();
-    f32 dt = (current_time - *previous_time) / 1000000000.0f;
-    *previous_time = current_time;
-    return dt;
+Input* Engine_get_input(Engine* e) {
+    if (!e) {
+        fprintf(stderr,
+                "Engine_get_input: invalid argument (Engine* e is NULL)\n");
+        return NULL;
+    }
+    return e->input;
 }
+
+void Engine_set_raster_mode(Engine* self, RasterMode raster_mode) {
+    if (!self) {
+        fprintf(stderr,
+                "Engine_set_raster_mode: invalid argument (Engine* is NULL)");
+        return;
+    }
+    if (!is_raster_mode(raster_mode)) {
+        fprintf(stderr, "Engine_set_raster_mode: unknown RasterMode\n");
+        // alert the user that raster mode keeps unchanged?
+        return;
+    }
+    Renderer_set_raster_mode(self->renderer, raster_mode);
+}
+
+void Engine_draw_pixel(Engine* e, int x, int y, u32 color) {
+    if (!e) {
+        fprintf(stderr, "Engine_draw_pixel: argument is NULL\n");
+        return;
+    }
+    Renderer_draw_pixel(e->renderer, x, y, color);
+}
+
+void Engine_draw_line(Engine* e, Vector2 start, Vector2 end, u32 color) {
+    if (!e) {
+        fprintf(stderr, "Engine_draw_line: argument is NULL\n");
+        return;
+    }
+    Renderer_draw_line(e->renderer, start, end, color);
+}
+
+void Engine_draw_triangle(Engine* e, Triangle triangle, u32 color) {
+    if (!e) {
+        fprintf(stderr, "Engine_draw_trialgne: argument is NULL\n");
+        return;
+    }
+    Renderer_draw_triangle(e->renderer, triangle, color);
+}
+
+void Engine_draw_object3D(const Engine* e, const Camera* camera,
+                          const Object3D* obj) {
+    if (!e || !camera || !obj) {
+        fprintf(stderr, "Engine_draw_object3D: some argument is NULL\n");
+        return;
+    }
+    Renderer_draw_object3D(e->renderer, camera, obj);
+}
+
+/*
+ ************************************************
+ ************************************************
+ *
+ * STATIC HELPERS
+ *
+ ************************************************
+ ************************************************
+ */
 
 static void Engine_process_input(Engine* self) {
     Input_begin_frame(self->input);
@@ -133,36 +192,9 @@ static void Engine_process_input(Engine* self) {
     }
 }
 
-// static void Engine_update(Engine* e) {}
-
-// static void Engine_draw(Engine* e) {}
-//
-Input* Engine_get_input(Engine* e) {
-    if (!e) {
-        fprintf(stderr,
-                "Engine_get_input: invalid argument (Engine* e is NULL)\n");
-        return NULL;
-    }
-    return e->input;
-}
-
-void Engine_draw_pixel(Engine* e, int x, int y, u32 color) {
-    Renderer_draw_pixel(e->renderer, x, y, color);
-}
-
-void Engine_draw_line(Engine* e, Vector2 start, Vector2 end, u32 color) {
-    Renderer_draw_line(e->renderer, start, end, color);
-}
-
-void Engine_draw_triangle(Engine* e, Triangle triangle, u32 color) {
-    Renderer_draw_triangle(e->renderer, triangle, color);
-}
-
-void Engine_draw_triangle_wireframe(Engine* e, Triangle triangle, u32 color) {
-    Renderer_draw_triangle_wireframe(e->renderer, triangle, color);
-}
-
-void Engine_draw_object3D(const Engine* e, const Camera* camera,
-                          const Object3D* obj) {
-    Renderer_draw_object3D(e->renderer, camera, obj);
+static f32 get_delta_time(Uint64* previous_time) {
+    Uint64 current_time = SDL_GetTicksNS();
+    f32 dt = (current_time - *previous_time) / 1000000000.0f;
+    *previous_time = current_time;
+    return dt;
 }

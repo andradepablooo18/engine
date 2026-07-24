@@ -14,4 +14,6 @@ f32 Camera_get_near(const Camera* self);
 f32 Camera_get_far(const Camera* self);
 Matrix4 Camera_get_view_matrix(const Camera* self);
 
+void Camera_translate(Camera* camera, Vector3 delta);
+
 #endif

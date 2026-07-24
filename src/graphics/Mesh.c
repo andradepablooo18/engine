@@ -5,8 +5,8 @@
 
 struct Mesh {
         Vector3* vertices;
-        u32 vertex_count;
         u32* indices;
+        u32 vertex_count;
         u32 index_count;
 };
 
@@ -70,7 +70,7 @@ void Mesh_destroy(Mesh** self) {
     *self = NULL;
 }
 
-Vector3* Mesh_get_vertices(Mesh* self) {
+Vector3* Mesh_get_vertices(const Mesh* self) {
     if (!self) {
         fprintf(stderr, "Mesh_get_vertices: Mesh* is NULL\n");
         return NULL;
@@ -78,7 +78,7 @@ Vector3* Mesh_get_vertices(Mesh* self) {
     return self->vertices;
 }
 
-u32 Mesh_get_vertex_count(Mesh* self) {
+u32 Mesh_get_vertex_count(const Mesh* self) {
     if (!self) {
         fprintf(stderr, "Mesh_get_vertex_count: Mesh* is NULL\n");
         return -1;
@@ -86,7 +86,7 @@ u32 Mesh_get_vertex_count(Mesh* self) {
     return self->vertex_count;
 }
 
-u32* Mesh_get_indices(Mesh* self) {
+u32* Mesh_get_indices(const Mesh* self) {
     if (!self) {
         fprintf(stderr, "Mesh_get_indices: Mesh* is NULL\n");
         return NULL;
@@ -94,7 +94,7 @@ u32* Mesh_get_indices(Mesh* self) {
     return self->indices;
 }
 
-u32 Mesh_get_index_count(Mesh* self) {
+u32 Mesh_get_index_count(const Mesh* self) {
     if (!self) {
         fprintf(stderr, "Mesh_get_index_count: Mesh* is NULL\n");
         return -1;

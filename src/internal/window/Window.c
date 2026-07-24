@@ -10,11 +10,6 @@ struct Window {
 };
 
 bool Window_create(Window** window, const char* title, i32 width, i32 height) {
-    if (!window) {
-        fprintf(stderr, "Window_create: invalid argument\n");
-        return false;
-    }
-
     *window = calloc(1, sizeof(Window));
     if (!*window) {
         fprintf(stderr, "Window_create: allocation failed\n");
@@ -44,9 +39,6 @@ bool Window_create(Window** window, const char* title, i32 width, i32 height) {
 }
 
 void Window_destroy(Window** window) {
-    if (!window || !*window)
-        return;
-
     Window* const w = *window;
     if (w->handle) {
         SDL_DestroyWindow(w->handle);
@@ -60,26 +52,8 @@ void Window_destroy(Window** window) {
     *window = NULL;
 }
 
-SDL_Window* Window_get_handle(const Window* self) {
-    if (!self) {
-        fprintf(stderr, "Window_get_handle: invalid argument\n");
-        return NULL;
-    }
-    return self->handle;
-}
+SDL_Window* Window_get_handle(const Window* self) { return self->handle; }
 
-i32 Window_get_width(const Window* self) {
-    if (!self) {
-        fprintf(stderr, "Window_get_width: invalid argument\n");
-        return -1;
-    }
-    return self->width;
-}
+i32 Window_get_width(const Window* self) { return self->width; }
 
-i32 Window_get_height(const Window* self) {
-    if (!self) {
-        fprintf(stderr, "Window_get_heigth: invalid argument\n");
-        return -1;
-    }
-    return self->height;
-}
+i32 Window_get_height(const Window* self) { return self->height; }

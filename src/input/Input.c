@@ -65,6 +65,8 @@ void Input_begin_frame(Input* self) {
            sizeof(self->previous_mouse_buttons));
     self->wheel_x = 0.0f;
     self->wheel_y = 0.0f;
+    self->mouse_delta_x = 0.0f;
+    self->mouse_delta_y = 0.0f;
 }
 
 void Input_process_event(Input* self, const SDL_Event* event) {

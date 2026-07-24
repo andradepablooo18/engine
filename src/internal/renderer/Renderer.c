@@ -1,8 +1,11 @@
 #include "Renderer.h"
 #include "core/colors.h" // THIS SHOULD NOT BE HERE BRUH
+#include "graphics/Camera.h"
 #include "graphics/Mesh.h"
+#include "graphics/RasterMode.h"
 #include "graphics/VertexOut.h"
 #include "math/common.h"
+#include "scene/Object3D.h"
 #include <math.h>
 #include <stdlib.h>
 
@@ -13,59 +16,102 @@ struct Renderer {
         // f32* depth_buffer;
         i32 width;
         i32 height;
+        RasterMode raster_mode;
 };
 
 /*
- * Draws pixel with some color in color_buffer but doesn't check for self
- * Renderer instance
+ *************************************************************************
+ *************************************************************************
  *
- * @param self Renderer instance.
- * @param x X coordinate in color_buffer.
- * @param y Y coordinate in color_buffer.
- * @param color Color in RGBA to set in color_buffer at x and y.
- */
-static inline void draw_pixel(Renderer* self, i32 x, i32 y, u32 color);
-
-/*
- * Draws line from start to end with a color in color_buffer (frame_buffer) but
- * doesn't check for self Renderer instance
+ * Renderer_draw_line HELPERS (based on which algorithm it is used)
  *
- * @param self Renderer instance.
- * @param start Start point of line.
- * @param end End point of line.
- * @param color Color in RGBA of the line
+ *************************************************************************
+ *************************************************************************
  */
-static void draw_line(Renderer* self, Vector2 start, Vector2 end, u32 color);
 
 static void draw_line_DDA(Renderer* self, Vector2 start, Vector2 end,
                           u32 color);
 static void draw_line_bresenham(Renderer* self, Vector2 start, Vector2 end,
                                 u32 color);
-static void draw_triangle_scanline(Renderer* self, Triangle triangle,
+
+/*
+ *************************************************************************
+ *************************************************************************
+ *
+ * Renderer_draw_triangle HELPERS (based on rasterization mode)
+ *
+ *************************************************************************
+ *************************************************************************
+ */
+
+static void draw_triangle_points(Renderer* self, Triangle triangle, u32 color);
+static void draw_triangle_wireframe(Renderer* self, Triangle triangle,
+                                    u32 color);
+static void draw_triangle_solid(Renderer* self, Triangle triangle, u32 color);
+
+/*
+ *************************************************************************
+ *************************************************************************
+ *
+ * draw_triangle_solid HELPERS (based on which algorithm it is used)
+ *
+ *************************************************************************
+ *************************************************************************
+ */
+
+static void scanline_rasterization(Renderer* self, Triangle triangle,
                                    u32 color);
 
-static Vector2 viewport_transform(Renderer* self, Vector3 v);
+static void barycentric_rasterization(Renderer* self, Triangle triangle,
+                                      u32 color);
 
-// static i32* Interpolate(Vector2 start, Vector2 end);
-// static void sum_arrays(i32* dest, i32 d_length, const i32* src1, i32
-// s1_length,
-//                        const i32* src2, i32 s2_length);
+/*
+ *************************************************************************
+ *************************************************************************
+ *
+ * Renderer_draw_object3D HELPERS
+ *
+ *************************************************************************
+ *************************************************************************
+ */
 
-bool Renderer_create(Renderer** self, Window* window) {
-    if (!self) {
-        fprintf(stderr,
-                "Renderer_create: invalid argument (Renderer** is NULL)\n");
-        return false;
-    }
-    if (!window) {
-        fprintf(stderr,
-                "Renderer_create: invalid argument (Window* is NULL)\n");
-        return false;
-    }
+static VertexOut* project_to_screen(const Renderer* self, const Camera* camera,
+                                    const Mesh* mesh,
+                                    const Transform* transform);
+static Vector2 viewport_transform(const Renderer* self, Vector3 v);
 
+/*
+ *************************************************************************
+ *************************************************************************
+ *
+ * Renderer_draw_object3D HELPERS (based on rasterization mode)
+ *
+ *************************************************************************
+ *************************************************************************
+ */
+
+static void rasterize_points(Renderer* self, u32 vertex_count,
+                             const VertexOut* projected_vertices);
+static void rasterize_wireframe(Renderer* self, const Mesh* mesh,
+                                const VertexOut* projected_vertices);
+static void rasterize_solid(Renderer* self, const Mesh* Mesh,
+                            const VertexOut* projected_vertices);
+
+/*
+ *************************************************************************
+ *************************************************************************
+ *
+ * PUBLIC INTERNAL API
+ *
+ *************************************************************************
+ *************************************************************************
+ */
+
+bool Renderer_create(Renderer** self, Window* window, RasterMode raster_mode) {
     *self = calloc(1, sizeof(Renderer));
     if (!*self) {
-        fprintf(stderr, "Renderer_create: allocation failed\n");
+        fprintf(stderr, "Renderer_create: "
+                        "allocation failed\n");
         return false;
     }
 
@@ -73,7 +119,10 @@ bool Renderer_create(Renderer** self, Window* window) {
 
     s->handle = SDL_CreateRenderer(Window_get_handle(window), NULL);
     if (!s->handle) {
-        fprintf(stderr, "SDL_CreateRenderer failed: %s\n", SDL_GetError());
+        fprintf(stderr,
+                "SDL_CreateRenderer failed: "
+                "%s\n",
+                SDL_GetError());
         Renderer_destroy(self);
         return false;
     }
@@ -95,19 +144,19 @@ bool Renderer_create(Renderer** self, Window* window) {
 
     s->color_buffer = calloc(width * height, sizeof(u32));
     if (!s->color_buffer) {
-        fprintf(stderr, "Renderer_create failed while allocating memory for "
+        fprintf(stderr, "Renderer_create failed while "
+                        "allocating memory for "
                         "color_buffer\n");
         Renderer_destroy(self);
         return false;
     }
 
+    s->raster_mode = raster_mode;
+
     return true;
 }
 
 void Renderer_destroy(Renderer** self) {
-    if (!self || !*self)
-        return;
-
     Renderer* const s = *self;
     if (s->color_buffer_texture) {
         SDL_DestroyTexture(s->color_buffer_texture);
@@ -125,11 +174,11 @@ void Renderer_destroy(Renderer** self) {
     *self = NULL;
 }
 
+void Renderer_set_raster_mode(Renderer* self, RasterMode raster_mode) {
+    self->raster_mode = raster_mode;
+}
+
 void Renderer_clear(Renderer* self, u32 color) {
-    if (!self) {
-        fprintf(stderr, "Renderer_clear: argument is NULL\n");
-        return;
-    }
     const size_t size = (size_t)self->width * self->height;
     for (size_t i = 0; i < size; i++) {
         self->color_buffer[i] = color;
@@ -137,155 +186,76 @@ void Renderer_clear(Renderer* self, u32 color) {
 }
 
 void Renderer_present(Renderer* self) {
-    if (!self) {
-        fprintf(stderr, "Renderer_present: argument is NULL\n");
-        return;
-    }
     SDL_UpdateTexture(self->color_buffer_texture, NULL, self->color_buffer,
                       self->width * sizeof(u32));
     SDL_RenderTexture(self->handle, self->color_buffer_texture, NULL, NULL);
     SDL_RenderPresent(self->handle);
 }
 
-void Renderer_draw_pixel(Renderer* self, i32 x, i32 y, u32 color) {
-    if (!self) {
-        fprintf(stderr, "Renderer_draw_pixel: argument is NULL\n");
-        return;
-    }
+inline void Renderer_draw_pixel(Renderer* self, i32 x, i32 y, u32 color) {
     if (x < 0 || x >= self->width || y < 0 || y >= self->height)
         return;
     self->color_buffer[y * self->width + x] = color;
 }
 
 void Renderer_draw_line(Renderer* self, Vector2 start, Vector2 end, u32 color) {
-    if (!self) {
-        fprintf(stderr, "Renderer_draw_line: argument is NULL\n");
-        return;
-    }
     // draw_line_DDA(self, x1, y1, x2, y2, color);
     draw_line_bresenham(self, start, end, color);
 }
 
-void Renderer_draw_triangle_wireframe(Renderer* self, Triangle triangle,
-                                      u32 color) {
-    if (!self) {
-        fprintf(stderr, "Renderer_draw_triangle_wireframe: argument is NULL\n");
-        return;
-    }
-    draw_line(self, triangle.p0, triangle.p1, color);
-    draw_line(self, triangle.p1, triangle.p2, color);
-    draw_line(self, triangle.p0, triangle.p2, color);
-}
-
 void Renderer_draw_triangle(Renderer* self, Triangle triangle, u32 color) {
-    if (!self) {
-        fprintf(stderr, "Renderer_draw_triangle: argument is NULL\n");
-        return;
+    switch (self->raster_mode) {
+        case RASTER_MODE_POINTS:
+            draw_triangle_points(self, triangle, color);
+            break;
+        case RASTER_MODE_WIREFRAME:
+            draw_triangle_wireframe(self, triangle, color);
+            break;
+        case RASTER_MODE_SOLID:
+            draw_triangle_solid(self, triangle, color);
+            break;
+        default:
+            break;
     }
-    draw_triangle_scanline(self, triangle, color);
 }
 
 void Renderer_draw_object3D(Renderer* self, const Camera* camera,
                             const Object3D* obj) {
-    if (!self || !camera || !obj) {
-        fprintf(stderr, "Renderer_draw_object3D: some argument is NULL\n");
+    // Vertex Processing
+    const Mesh* mesh = Object3D_get_mesh(obj);
+    const Transform transform = Object3D_get_transform(obj);
+    VertexOut* projected_vertices =
+        project_to_screen(self, camera, mesh, &transform);
+    if (!projected_vertices)
         return;
+
+    // Rasterization
+    switch (self->raster_mode) {
+        case RASTER_MODE_POINTS:
+            rasterize_points(self, Mesh_get_vertex_count(mesh),
+                             projected_vertices);
+            break;
+        case RASTER_MODE_WIREFRAME:
+            rasterize_wireframe(self, mesh, projected_vertices);
+            break;
+        case RASTER_MODE_SOLID:
+            rasterize_solid(self, mesh, projected_vertices);
+            break;
+        default:
+            break;
     }
 
-    Transform transform = Object3D_get_transform(obj);
-    Matrix4 model_matrix = Transform_get_matrix(&transform);
-    Matrix4 view_matrix = Camera_get_view_matrix(camera);
-
-    // Get camera value in order to get projection matrix
-    f32 fov_y = Camera_get_fov(camera);
-    f32 near = Camera_get_near(camera);
-    f32 far = Camera_get_far(camera);
-    Matrix4 projection_matrix = Matrix4_perspective_projection(
-        fov_y, self->width / (f32)self->height, near, far);
-
-    // Get object mesh
-    Mesh* mesh = Object3D_get_mesh(obj);
-    // Get mesh attributes
-    Vector3* mesh_vertices = Mesh_get_vertices(mesh);
-    u32 vertex_count = Mesh_get_vertex_count(mesh);
-    u32* mesh_indices = Mesh_get_indices(mesh);
-    u32 index_count = Mesh_get_index_count(mesh);
-
-    VertexOut* vertices = calloc(vertex_count, sizeof(VertexOut));
-    if (!vertices) {
-        fprintf(stderr, "Renderer_draw_object3D: allocation failed\n");
-        return;
-    }
-
-    for (u32 i = 0; i < vertex_count; i++) {
-        Vector4 local = Vector4_from_vector3(mesh_vertices[i]);
-
-        // Local -> World
-        Vector4 world = Matrix4_multiply_vector(model_matrix, local);
-
-        // World -> Camera
-        Vector4 view = Matrix4_multiply_vector(view_matrix, world);
-
-        // Camera -> Clip
-        Vector4 clip = Matrix4_multiply_vector(projection_matrix, view);
-
-        // Clipping
-        // if (clip.x < -clip.w || clip.x > clip.w)
-        //     continue;
-        // if (clip.y < -clip.w || clip.y > clip.w)
-        //     continue;
-        // if (clip.z < -clip.w || clip.z > clip.w)
-        //     continue;
-
-        // Perspective divide
-        vertices[i].ndc.x = clip.x / clip.w;
-        vertices[i].ndc.y = clip.y / clip.w;
-        vertices[i].ndc.z = clip.z / clip.w;
-
-        // NDC -> Screen
-        vertices[i].screen = viewport_transform(self, vertices[i].ndc);
-    }
-
-    // Rasterize vertices
-    for (u32 i = 0; i < index_count; i += 3) {
-        Vector2 a = vertices[mesh_indices[i]].screen;
-        Vector2 b = vertices[mesh_indices[i + 1]].screen;
-        Vector2 c = vertices[mesh_indices[i + 2]].screen;
-        draw_line(self, a, b, COLOR_WHITE);
-        draw_line(self, b, c, COLOR_WHITE);
-        draw_line(self, c, a, COLOR_WHITE);
-    }
-
-    free(vertices);
+    free(projected_vertices);
 }
 
 /*
- ************************************************
- ************************************************
+ *************************************************************************
+ *************************************************************************
  *
  * STATIC HELPERS
  *
- ************************************************
- ************************************************
- */
-
-static inline void draw_pixel(Renderer* self, i32 x, i32 y, u32 color) {
-    if (x < 0 || x >= self->width || y < 0 || y >= self->height)
-        return;
-    self->color_buffer[y * self->width + x] = color;
-}
-
-static void draw_line(Renderer* self, Vector2 start, Vector2 end, u32 color) {
-    // draw_line_DDA(self, x1, y1, x2, y2, color);
-    draw_line_bresenham(self, start, end, color);
-}
-
-/*
- ************************************************
- *
- * DRAW LINE HELPERS (based on which algorithm it is used)
- *
- ************************************************
+ *************************************************************************
+ *************************************************************************
  */
 
 static void draw_line_DDA(Renderer* self, Vector2 start, Vector2 end,
@@ -304,7 +274,7 @@ static void draw_line_DDA(Renderer* self, Vector2 start, Vector2 end,
     i32 steps = abs_dx > abs_dy ? abs_dx : abs_dy;
 
     if (steps == 0) {
-        draw_pixel(self, x1, y1, color);
+        Renderer_draw_pixel(self, x1, y1, color);
         return;
     }
 
@@ -315,7 +285,7 @@ static void draw_line_DDA(Renderer* self, Vector2 start, Vector2 end,
     f32 y = (f32)y1;
 
     for (i32 i = 0; i <= steps; i++) {
-        draw_pixel(self, (i32)roundf(x), (i32)roundf(y), color);
+        Renderer_draw_pixel(self, (i32)roundf(x), (i32)roundf(y), color);
         x += x_inc;
         y += y_inc;
     }
@@ -338,7 +308,7 @@ static void draw_line_bresenham(Renderer* self, Vector2 start, Vector2 end,
     i32 err = dx - dy;
 
     while (true) {
-        draw_pixel(self, x1, y1, color);
+        Renderer_draw_pixel(self, x1, y1, color);
 
         if (x1 == x2 && y1 == y2)
             break;
@@ -357,195 +327,136 @@ static void draw_line_bresenham(Renderer* self, Vector2 start, Vector2 end,
     }
 }
 
-/*
- ************************************************
- *
- * DRAW FILLED TRIANGLE HELPERS (based on which algorithm it is used)
- *
- ************************************************
- */
+static void draw_triangle_points(Renderer* self, Triangle triangle, u32 color) {
+    Renderer_draw_pixel(self, triangle.p0.x, triangle.p0.y, color);
+    Renderer_draw_pixel(self, triangle.p1.x, triangle.p1.y, color);
+    Renderer_draw_pixel(self, triangle.p2.x, triangle.p2.y, color);
+}
 
-// Draw filled triangle using scanline rasterization
-static void draw_triangle_scanline(Renderer* self, Triangle triangle,
+static void draw_triangle_wireframe(Renderer* self, Triangle triangle,
+                                    u32 color) {
+    Renderer_draw_line(self, triangle.p0, triangle.p1, color);
+    Renderer_draw_line(self, triangle.p1, triangle.p2, color);
+    Renderer_draw_line(self, triangle.p0, triangle.p2, color);
+}
+
+static void draw_triangle_solid(Renderer* self, Triangle triangle, u32 color) {
+    scanline_rasterization(self, triangle, color);
+}
+
+static void scanline_rasterization(Renderer* self, Triangle triangle,
                                    u32 color) {
-    // Sort triangle vertices based on ints y coordinate from smallest to
-    // biggest so that p0.y <= p1.y <= p2.y
+    // Sort triangle vertices based on ints y
+    // coordinate from smallest to biggest so
+    // that p0.y <= p1.y <= p2.y
     if (triangle.p0.y > triangle.p1.y)
         Vector2_swap(&triangle.p0, &triangle.p1);
     if (triangle.p1.y > triangle.p2.y)
         Vector2_swap(&triangle.p1, &triangle.p2);
     if (triangle.p0.y > triangle.p1.y)
         Vector2_swap(&triangle.p0, &triangle.p1);
-
-    // For each y there must be a range in x to be filled
-    f32 x_left;
-    f32 x_right;
-
-    i32 x0;
-    i32 x1;
-    i32 y0;
-    i32 y1;
-
-    // Check for degenerated triangles
-    if ((triangle.p2.y - triangle.p0.y) < MATH_EPSILON) {
-        if (triangle.p0.x < triangle.p2.x) {
-            x_left = triangle.p0.x;
-            x_right = triangle.p2.x;
-        } else {
-            x_left = triangle.p2.x;
-            x_right = triangle.p0.x;
-        }
-        x0 = (i32)roundf(x_left);
-        x1 = (i32)roundf(x_right);
-        y0 = (i32)roundf(triangle.p0.y);
-        for (i32 x = x0; x <= x1; x++) {
-            draw_pixel(self, x, y0, color);
-        }
-        return;
-    }
-
-    // For each line, calculate each variation in x per y
-
-    // First line (the longest)
-    f32 dx02 = triangle.p2.x - triangle.p0.x;
-    f32 dy02 = triangle.p2.y - triangle.p0.y;
-    f32 x_step02 = dx02 / dy02;
-
-    f32 dx01 = triangle.p1.x - triangle.p0.x;
-    f32 dy01 = triangle.p1.y - triangle.p0.y;
-    f32 x_step01 = 0.0f;
-    if (dy01 > MATH_EPSILON) {
-        x_step01 = dx01 / dy01;
-    }
-
-    f32 dx12 = triangle.p2.x - triangle.p1.x;
-    f32 dy12 = triangle.p2.y - triangle.p1.y;
-    f32 x_step12 = 0.0f;
-    if (dy12 > MATH_EPSILON) {
-        x_step12 = dx12 / dy12;
-    }
-
-    // For first half:
-
-    // Select which side is left and which one is right
-    // Then set how much it is going to change x_left and x_rigth in each
-    // iteration
-    f32 x_middle = triangle.p0.x + x_step02 * (triangle.p1.y - triangle.p0.y);
-    f32 x_left_step;
-    f32 x_right_step;
-    if (x_middle < triangle.p1.x) {
-        x_left_step = x_step02;
-        x_right_step = x_step01;
-    } else {
-        x_left_step = x_step01;
-        x_right_step = x_step02;
-    }
-    // Set start point and end point in y between p0 and p1
-    y0 = (i32)ceilf(triangle.p0.y);
-    y1 = (i32)floorf(triangle.p1.y);
-    // Set initial values for these as they start in the same highest point
-    x_left = triangle.p0.x;
-    x_right = triangle.p0.x;
-
-    // Draw pixels horizontally from x_left to x_right per y
-    for (i32 y = y0; y < y1; y++) {
-        // Set start point and end point in x between p0 and p1
-        i32 x0 = (i32)roundf(x_left);
-        i32 x1 = (i32)roundf(x_right);
-
-        for (i32 x = x0; x <= x1; x++) {
-            draw_pixel(self, x, y, color);
-        }
-
-        x_left += x_left_step;
-        x_right += x_right_step;
-    }
-
-    // Do almost same for second half:
-
-    // Change x_step in one of the sides as we are now computing the remaining
-    // side
-    if (x_middle < triangle.p1.x) {
-        x_right_step = x_step12;
-        x_left = x_middle;
-        x_right = triangle.p1.x;
-    } else {
-        x_left_step = x_step12;
-        x_left = triangle.p1.x;
-        x_right = x_middle;
-    }
-    // Set start point and end point in y between p1 and p2
-    // we did p1.y in last iteration so add 1
-    y0 = (i32)ceilf(triangle.p1.y);
-    y1 = (i32)floorf(triangle.p2.y);
-
-    for (i32 y = y0; y <= y1; y++) {
-        // Set starting points in x between p0 and p1
-        i32 x0 = (i32)roundf(x_left);
-        i32 x1 = (i32)roundf(x_right);
-
-        for (i32 x = x0; x <= x1; x++) {
-            draw_pixel(self, x, y, color);
-        }
-
-        x_left += x_left_step;
-        x_right += x_right_step;
-    }
 }
 
-static Vector2 viewport_transform(Renderer* self, Vector3 v) {
+static void barycentric_rasterization(Renderer* self, Triangle triangle,
+                                      u32 color) {}
+
+static VertexOut* project_to_screen(const Renderer* self, const Camera* camera,
+                                    const Mesh* mesh,
+                                    const Transform* transform) {
+    // Get model_matrix from the transform of
+    // the object
+    Matrix4 model_matrix = Transform_get_matrix(transform);
+    // Get view_matrix from the transform of
+    // the camera
+    Matrix4 view_matrix = Camera_get_view_matrix(camera);
+
+    // Get camera members in order to get
+    // projection matrix
+    f32 fov_y = Camera_get_fov(camera);
+    f32 near = Camera_get_near(camera);
+    f32 far = Camera_get_far(camera);
+    Matrix4 projection_matrix = Matrix4_perspective_projection(
+        fov_y, self->width / (f32)self->height, near, far);
+
+    // Get mesh members
+    Vector3* mesh_vertices = Mesh_get_vertices(mesh);
+    u32 vertex_count = Mesh_get_vertex_count(mesh);
+
+    VertexOut* projected_vertices = calloc(vertex_count, sizeof(VertexOut));
+    if (!projected_vertices) {
+        fprintf(stderr, "project_vertices: "
+                        "allocation failed\n");
+        return NULL;
+    }
+
+    for (u32 i = 0; i < vertex_count; i++) {
+        Vector4 local = Vector4_from_vector3(mesh_vertices[i]);
+        // Local space -> World space
+        Vector4 world = Matrix4_multiply_vector(model_matrix, local);
+        // World space -> Camera space
+        Vector4 view = Matrix4_multiply_vector(view_matrix, world);
+        // Camera space -> Clip space
+        Vector4 clip = Matrix4_multiply_vector(projection_matrix, view);
+
+        // Clipping
+        // if (clip.x < -clip.w || clip.x >
+        // clip.w)
+        //     continue;
+        // if (clip.y < -clip.w || clip.y >
+        // clip.w)
+        //     continue;
+        // if (clip.z < -clip.w || clip.z >
+        // clip.w)
+        //     continue;
+
+        // Perspective divide
+        projected_vertices[i].ndc.x = clip.x / clip.w;
+        projected_vertices[i].ndc.y = clip.y / clip.w;
+        projected_vertices[i].ndc.z = clip.z / clip.w;
+        // Normalized Device Coordinates
+        // (NDC) -> Screen coordinates
+        projected_vertices[i].screen =
+            viewport_transform(self, projected_vertices[i].ndc);
+    }
+    return projected_vertices;
+}
+
+static Vector2 viewport_transform(const Renderer* self, Vector3 v) {
     return (Vector2){(v.x + 1.0f) * self->width * 0.5f,
                      (1.0f - v.y) * self->height * 0.5f};
 }
 
-// Interpolates all x values between start and end
-// static i32* Interpolate(Vector2 start, Vector2 end) {
-//     i32 x1 = (i32)roundf(start.x);
-//     i32 y1 = (i32)roundf(start.y);
-//
-//     i32 x2 = (i32)roundf(end.x);
-//     i32 y2 = (i32)roundf(end.y);
-//
-//     i32 dx = x2 - x1;
-//     i32 dy = y2 - y1;
-//
-//     i32* x_values = calloc(abs(dy) + 1, sizeof(i32));
-//     if (!x_values)
-//         return NULL;
-//
-//     if (dy <= 0) {
-//         x_values[0] = start.x;
-//         return x_values;
-//     }
-//
-//     f32 slope = dx / (f32)dy;
-//
-//     f32 x = x1;
-//
-//     for (i32 y = y1; y <= y2; y++) {
-//         x_values[y - y1] = (i32)roundf(x);
-//         x += slope;
-//     }
-//
-//     return x_values;
-// }
-//
-// static void sum_arrays(i32* dest, i32 d_length, const i32* src1, i32
-// s1_length,
-//                        const i32* src2, i32 s2_length) {
-//     if (!dest || !src1 || !src2) {
-//         fprintf(stderr, "sum_arrays: some i32 array is NULL\n");
-//         return;
-//     }
-//     if (d_length < s1_length + s2_length) {
-//         fprintf(stderr, "sum_arrays: destination array is too small\n");
-//         return;
-//     }
-//
-//     for (i32 i = 0; i < s1_length; i++) {
-//         dest[i] = src1[i];
-//     }
-//     for (i32 i = 0; i < s2_length; i++) {
-//         dest[i + s1_length] = src2[i];
-//     }
-// }
+static void rasterize_points(Renderer* self, u32 vertex_count,
+                             const VertexOut* projected_vertices) {
+    for (u32 i = 0; i < vertex_count; i++) {
+        Renderer_draw_pixel(self, projected_vertices[i].screen.x,
+                            projected_vertices[i].screen.y, COLOR_WHITE);
+    }
+}
+
+static void rasterize_wireframe(Renderer* self, const Mesh* mesh,
+                                const VertexOut* projected_vertices) {
+    u32* mesh_indices = Mesh_get_indices(mesh);
+    u32 index_count = Mesh_get_index_count(mesh);
+    for (u32 i = 0; i < index_count; i += 3) {
+        Vector2 a = projected_vertices[mesh_indices[i]].screen;
+        Vector2 b = projected_vertices[mesh_indices[i + 1]].screen;
+        Vector2 c = projected_vertices[mesh_indices[i + 2]].screen;
+        draw_triangle_wireframe(self, (Triangle){a, b, c}, COLOR_WHITE);
+    }
+}
+
+static void rasterize_solid(Renderer* self, const Mesh* mesh,
+                            const VertexOut* projected_vertices) {
+    u32* mesh_indices = Mesh_get_indices(mesh);
+    u32 index_count = Mesh_get_index_count(mesh);
+    u32 colors[] = {COLOR_WHITE,  COLOR_BLUE, COLOR_CYAN, COLOR_MAGENTA,
+                    COLOR_YELLOW, COLOR_RED,  COLOR_GREEN};
+
+    for (u32 i = 0; i < index_count; i += 3) {
+        Vector2 a = projected_vertices[mesh_indices[i]].screen;
+        Vector2 b = projected_vertices[mesh_indices[i + 1]].screen;
+        Vector2 c = projected_vertices[mesh_indices[i + 2]].screen;
+        draw_triangle_solid(self, (Triangle){a, b, c}, colors[i % 7]);
+    }
+}

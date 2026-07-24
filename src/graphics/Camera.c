@@ -1,4 +1,5 @@
 #include "graphics/Camera.h"
+#include "math/Matrix4.h"
 #include "math/common.h"
 #include "scene/Transform.h"
 #include <stdio.h>
@@ -21,7 +22,7 @@ struct Camera {
 //
 
 /* Camera_create: creates a camera with default values in transform (i.e
- * position, scale, rotation) and fov, near plane and far plane */
+ * position, scale, rotation), fov, near plane and far plane */
 bool Camera_create(Camera** self) {
     if (!self) {
         fprintf(stderr, "Camera_create: Camera** is NULL\n");
@@ -83,4 +84,8 @@ Matrix4 Camera_get_view_matrix(const Camera* self) {
     return Matrix4_translation(-self->transform.position.x,
                                -self->transform.position.y,
                                -self->transform.position.z);
+}
+
+void Camera_translate(Camera* camera, Vector3 delta) {
+    Transform_translate(&camera->transform, delta);
 }
