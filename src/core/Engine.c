@@ -1,10 +1,11 @@
 #include "core/Engine.h"
+#include "core/Color.h"
 #include "core/Engine_config.h"
-#include "core/colors.h"
 #include "graphics/RasterMode.h"
 #include "internal/Input_internal.h"
 #include "internal/renderer/Renderer.h"
 #include "internal/window/Window.h"
+#include <assert.h>
 #include <stdlib.h>
 
 struct Engine {
@@ -100,7 +101,7 @@ void Engine_run(Engine* e, const EngineCallbacks* callbacks) {
         Engine_process_input(e);
 
         if (callbacks->update)
-            callbacks->update(e->input, dt);
+            callbacks->update(e, dt);
 
         Renderer_clear(e->renderer, COLOR_BLACK);
         if (callbacks->draw)
@@ -132,38 +133,41 @@ void Engine_set_raster_mode(Engine* self, RasterMode raster_mode) {
     Renderer_set_raster_mode(self->renderer, raster_mode);
 }
 
-void Engine_draw_pixel(Engine* e, int x, int y, u32 color) {
-    if (!e) {
-        fprintf(stderr, "Engine_draw_pixel: argument is NULL\n");
-        return;
+RasterMode Engine_get_raster_mode(const Engine* self) {
+    if (!self) {
+        fprintf(stderr,
+                "Engine_get_raster_mode: invalid argument (Engine* is NULL)\n");
+        return -1;
     }
-    Renderer_draw_pixel(e->renderer, x, y, color);
+    return Renderer_get_raster_mode(self->renderer);
 }
 
-void Engine_draw_line(Engine* e, Vector2 start, Vector2 end, u32 color) {
-    if (!e) {
-        fprintf(stderr, "Engine_draw_line: argument is NULL\n");
-        return;
-    }
-    Renderer_draw_line(e->renderer, start, end, color);
+void Engine_draw_pixel(const Engine* self, i32 x, i32 y, Color color) {
+    assert(self);
+    Renderer_draw_pixel(x, y, color, self->renderer);
 }
 
-void Engine_draw_triangle(Engine* e, Triangle triangle, u32 color) {
-    if (!e) {
-        fprintf(stderr, "Engine_draw_trialgne: argument is NULL\n");
-        return;
-    }
-    Renderer_draw_triangle(e->renderer, triangle, color);
+void Engine_draw_line(const Engine* self, Vector2 a, Vector2 b, Color color) {
+    assert(self);
+    Renderer_draw_line(a, b, color, self->renderer);
 }
 
-void Engine_draw_object3D(const Engine* e, const Camera* camera,
-                          const Object3D* obj) {
-    if (!e || !camera || !obj) {
-        fprintf(stderr, "Engine_draw_object3D: some argument is NULL\n");
-        return;
-    }
-    Renderer_draw_object3D(e->renderer, camera, obj);
-}
+// void Engine_draw_triangle(Engine* e, Triangle triangle, Color color) {
+//     if (!e) {
+//         fprintf(stderr, "Engine_draw_trialgne: argument is NULL\n");
+//         return;
+//     }
+//     Renderer_draw_triangle(e->renderer, triangle, color);
+// }
+//
+// void Engine_draw_object3D(const Engine* e, const Camera* camera,
+//                           const Object3D* obj) {
+//     if (!e || !camera || !obj) {
+//         fprintf(stderr, "Engine_draw_object3D: some argument is NULL\n");
+//         return;
+//     }
+//     Renderer_draw_object3D(e->renderer, camera, obj);
+// }
 
 /*
  ************************************************

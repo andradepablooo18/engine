@@ -17,15 +17,16 @@
 // #define INV_SQRT2 0.70710678
 //
 // bool setup(void);
-// void update(Input* input, f32 dt);
+// void update(Engine* e, f32 dt);
 // void draw(Engine* e);
 // void destroy(void);
-//
+
 // void move_cube(Input* input, f32 dt, f32 velocity);
 // void zoom_cube_with_mouse_wheel(Input* input, f32 zoom_speed);
 // void rotate_cube_when_pressed(Input* input, f32 sensitivity);
 // void rotate_cube_animation(f32 dt, f32 rotation_speed);
 //
+// Input* input;
 // Camera* camera = NULL;
 // Mesh* cube_mesh = NULL;
 // Object3D* cube = NULL;
@@ -36,10 +37,10 @@
 //         return EXIT_FAILURE;
 //     }
 //     Engine_set_raster_mode(e, RASTER_MODE_WIREFRAME);
-//
 //     if (!setup()) {
 //         return EXIT_FAILURE;
 //     }
+//     input = Engine_get_input(e);
 //
 //     EngineCallbacks callbacks = {.update = update, .draw = draw};
 //
@@ -67,11 +68,26 @@
 //     return true;
 // }
 //
-// void update(Input* input, f32 dt) {
+// void update(Engine* e, f32 dt) {
+//     // Switch between raster_mode
+//     if (Input_is_key_pressed(input, KEY_R)) {
+//         RasterMode current_raster_mode = Engine_get_raster_mode(e);
+//         current_raster_mode = (current_raster_mode + 1) % 3;
+//         Engine_set_raster_mode(e, current_raster_mode);
+//     }
+//
 //     move_cube(input, dt, SPEED);
 //     zoom_cube_with_mouse_wheel(input, ZOOM_SPEED);
 //     rotate_cube_when_pressed(input, SENSITIVITY);
 //     // rotate_cube_animation(dt, ROTATION_SPEED);
+// }
+//
+// void draw(Engine* e) { Engine_draw_object3D(e, camera, cube); }
+//
+// void destroy(void) {
+//     Camera_destroy(&camera);
+//     Mesh_destroy(&cube_mesh);
+//     Object3D_destroy(&cube);
 // }
 //
 // void move_cube(Input* input, f32 dt, f32 speed) {
@@ -114,12 +130,4 @@
 //     Object3D_rotate(cube,
 //                     (Vector3){dt * rotation_speed, dt * rotation_speed,
 //                     0.0f});
-// }
-//
-// void draw(Engine* e) { Engine_draw_object3D(e, camera, cube); }
-//
-// void destroy(void) {
-//     Camera_destroy(&camera);
-//     Mesh_destroy(&cube_mesh);
-//     Object3D_destroy(&cube);
 // }

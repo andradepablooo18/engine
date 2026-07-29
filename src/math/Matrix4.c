@@ -42,7 +42,7 @@ Matrix4 Matrix4_perspective_projection(f32 fov_y, f32 aspect, f32 near,
     return (Matrix4){
         {{f / aspect, 0, 0, 0},
          {0, f, 0, 0},
-         {0, 0, (far + near) / (far - near), (-2 * far * near) / (far - near)},
+         {0, 0, -(far + near) / (far - near), -(2 * far * near) / (far - near)},
          {0, 0, -1, 0}}};
 }
 

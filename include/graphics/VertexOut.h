@@ -5,8 +5,13 @@
 #include "math/Vector3.h"
 
 typedef struct VertexOut {
-        Vector3 ndc;
-        Vector2 screen;
+        Vector3 position;
 } VertexOut;
+
+static inline void VertexOut_swap(VertexOut* a, VertexOut* b) {
+    VertexOut temp = *a;
+    *a = *b;
+    *b = temp;
+}
 
 #endif

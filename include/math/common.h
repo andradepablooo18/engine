@@ -5,7 +5,7 @@
 
 #define PI 3.14159265358979323946f
 #define TWO_PI (PI * 2.0f)
-#define HALF_PI (PI * 0.5f);
+#define HALF_PI (PI * 0.5f)
 
 #define MATH_EPSILON 1e-6f
 

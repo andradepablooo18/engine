@@ -1,38 +1,25 @@
 #include "Renderer.h"
-#include "core/colors.h" // THIS SHOULD NOT BE HERE BRUH
+#include "Rasterizer2D.h"
 #include "graphics/Camera.h"
 #include "graphics/Mesh.h"
 #include "graphics/RasterMode.h"
 #include "graphics/VertexOut.h"
+#include "math/Vector3.h"
 #include "math/common.h"
 #include "scene/Object3D.h"
+#include <assert.h>
 #include <math.h>
 #include <stdlib.h>
 
 struct Renderer {
         SDL_Renderer* handle;
         SDL_Texture* color_buffer_texture;
-        u32* color_buffer;
-        // f32* depth_buffer;
+        Color* color_buffer;
+        f32* depth_buffer;
         i32 width;
         i32 height;
         RasterMode raster_mode;
 };
-
-/*
- *************************************************************************
- *************************************************************************
- *
- * Renderer_draw_line HELPERS (based on which algorithm it is used)
- *
- *************************************************************************
- *************************************************************************
- */
-
-static void draw_line_DDA(Renderer* self, Vector2 start, Vector2 end,
-                          u32 color);
-static void draw_line_bresenham(Renderer* self, Vector2 start, Vector2 end,
-                                u32 color);
 
 /*
  *************************************************************************
@@ -44,10 +31,12 @@ static void draw_line_bresenham(Renderer* self, Vector2 start, Vector2 end,
  *************************************************************************
  */
 
-static void draw_triangle_points(Renderer* self, Triangle triangle, u32 color);
-static void draw_triangle_wireframe(Renderer* self, Triangle triangle,
-                                    u32 color);
-static void draw_triangle_solid(Renderer* self, Triangle triangle, u32 color);
+// static void draw_triangle_points(Renderer* self, Vector2 p0, Vector2 p1,
+//                                  Vector2 p2, Color color);
+// static void draw_triangle_wireframe(Renderer* self, Vector2 p0, Vector2 p1,
+//                                     Vector2 p2, Color color);
+// static void draw_triangle_solid(Renderer* self, Vector2 p0, Vector2 p1,
+//                                 Vector2 p2, Color color);
 
 /*
  *************************************************************************
@@ -59,11 +48,24 @@ static void draw_triangle_solid(Renderer* self, Triangle triangle, u32 color);
  *************************************************************************
  */
 
-static void scanline_rasterization(Renderer* self, Triangle triangle,
-                                   u32 color);
+// static void scanline_rasterization(Renderer* self, Triangle triangle,
+//                                    Color color);
+//
+// static void barycentric_rasterization(Renderer* self, Vector2 a, Vector2 b,
+//                                       Vector2 c, Color color);
 
-static void barycentric_rasterization(Renderer* self, Triangle triangle,
-                                      u32 color);
+/*
+ *************************************************************************
+ *************************************************************************
+ *
+ * barycentric_rasterization HELPERS
+ *
+ *************************************************************************
+ *************************************************************************
+ */
+
+// bool is_top_left(const Vector2* a, const Vector2* b);
+// static f32 edge(const Vector2* a, const Vector2* b, const Vector2* p);
 
 /*
  *************************************************************************
@@ -75,11 +77,13 @@ static void barycentric_rasterization(Renderer* self, Triangle triangle,
  *************************************************************************
  */
 
-static VertexOut* project_to_screen(const Renderer* self, const Camera* camera,
-                                    const Mesh* mesh,
-                                    const Transform* transform);
-static Vector2 viewport_transform(const Renderer* self, Vector3 v);
-
+// static VertexOut* project_to_screen(const Renderer* self, const Camera*
+// camera,
+//                                     const Mesh* mesh,
+//                                     const Transform* transform);
+// static VertexOut viewport_transform(const Renderer* self, const Vector3*
+// ndc);
+//
 /*
  *************************************************************************
  *************************************************************************
@@ -90,13 +94,26 @@ static Vector2 viewport_transform(const Renderer* self, Vector3 v);
  *************************************************************************
  */
 
-static void rasterize_points(Renderer* self, u32 vertex_count,
-                             const VertexOut* projected_vertices);
-static void rasterize_wireframe(Renderer* self, const Mesh* mesh,
-                                const VertexOut* projected_vertices);
-static void rasterize_solid(Renderer* self, const Mesh* Mesh,
-                            const VertexOut* projected_vertices);
+// static void draw_object3D_vertices(Renderer* self,
+//                                    const VertexOut* projected_vertices,
+//                                    u32 vertex_count);
+// static void draw_mesh_wireframe(Renderer* self, const Mesh* mesh,
+//                                 const VertexOut* projected_vertices);
+// static void draw_mesh_solid(Renderer* self, const Mesh* mesh,
+//                             VertexOut* projected_vertices);
 
+/*
+ *************************************************************************
+ *************************************************************************
+ *
+ * draw_mesh_solid HELPERS (based on mode)
+ *
+ *************************************************************************
+ *************************************************************************
+ */
+
+// static void fill_vertex_out_triangle(Renderer* self, VertexOut* a_out,
+//                                      VertexOut* b_out, VertexOut* c_out);
 /*
  *************************************************************************
  *************************************************************************
@@ -141,12 +158,25 @@ bool Renderer_create(Renderer** self, Window* window, RasterMode raster_mode) {
         Renderer_destroy(self);
         return false;
     }
+    // Default
+    // SDL_SetTextureScaleMode(s->color_buffer_texture, SDL_SCALEMODE_LINEAR)
+    // For pixel art
+    SDL_SetTextureScaleMode(s->color_buffer_texture, SDL_SCALEMODE_NEAREST);
 
-    s->color_buffer = calloc(width * height, sizeof(u32));
+    s->color_buffer = calloc(width * height, sizeof(Color));
     if (!s->color_buffer) {
         fprintf(stderr, "Renderer_create failed while "
                         "allocating memory for "
                         "color_buffer\n");
+        Renderer_destroy(self);
+        return false;
+    }
+
+    s->depth_buffer = calloc(width * height, sizeof(f32));
+    if (!s->color_buffer) {
+        fprintf(stderr, "Renderer_create failed while "
+                        "allocating memory for "
+                        "depth_buffer\n");
         Renderer_destroy(self);
         return false;
     }
@@ -161,6 +191,10 @@ void Renderer_destroy(Renderer** self) {
     if (s->color_buffer_texture) {
         SDL_DestroyTexture(s->color_buffer_texture);
         s->color_buffer_texture = NULL;
+    }
+    if (s->depth_buffer) {
+        free(s->depth_buffer);
+        s->depth_buffer = NULL;
     }
     if (s->color_buffer) {
         free(s->color_buffer);
@@ -178,285 +212,390 @@ void Renderer_set_raster_mode(Renderer* self, RasterMode raster_mode) {
     self->raster_mode = raster_mode;
 }
 
-void Renderer_clear(Renderer* self, u32 color) {
+RasterMode Renderer_get_raster_mode(const Renderer* self) {
+    return self->raster_mode;
+}
+
+void Renderer_clear(Renderer* self, Color color) {
     const size_t size = (size_t)self->width * self->height;
     for (size_t i = 0; i < size; i++) {
         self->color_buffer[i] = color;
+        self->depth_buffer[i] = 1.0f;
     }
 }
 
 void Renderer_present(Renderer* self) {
     SDL_UpdateTexture(self->color_buffer_texture, NULL, self->color_buffer,
-                      self->width * sizeof(u32));
+                      self->width * sizeof(Color));
     SDL_RenderTexture(self->handle, self->color_buffer_texture, NULL, NULL);
     SDL_RenderPresent(self->handle);
 }
 
-inline void Renderer_draw_pixel(Renderer* self, i32 x, i32 y, u32 color) {
-    if (x < 0 || x >= self->width || y < 0 || y >= self->height)
-        return;
-    self->color_buffer[y * self->width + x] = color;
+void Renderer_draw_pixel(i32 x, i32 y, Color color, const Renderer* self) {
+    assert(self);
+    Rasterizer2D_draw_pixel(x, y, color, self->color_buffer, self->width,
+                            self->height);
 }
 
-void Renderer_draw_line(Renderer* self, Vector2 start, Vector2 end, u32 color) {
-    // draw_line_DDA(self, x1, y1, x2, y2, color);
-    draw_line_bresenham(self, start, end, color);
+void Renderer_draw_line(Vector2 a, Vector2 b, Color color,
+                        const Renderer* self) {
+    assert(self);
+    Rasterizer2D_draw_line(a, b, color, self->color_buffer, self->width,
+                           self->height);
 }
 
-void Renderer_draw_triangle(Renderer* self, Triangle triangle, u32 color) {
-    switch (self->raster_mode) {
-        case RASTER_MODE_POINTS:
-            draw_triangle_points(self, triangle, color);
-            break;
-        case RASTER_MODE_WIREFRAME:
-            draw_triangle_wireframe(self, triangle, color);
-            break;
-        case RASTER_MODE_SOLID:
-            draw_triangle_solid(self, triangle, color);
-            break;
-        default:
-            break;
-    }
-}
+// void Renderer_draw_triangle(Renderer* self, Triangle triangle, Color color) {
+//     switch (self->raster_mode) {
+//         case RASTER_MODE_POINTS:
+//             draw_triangle_points(self, triangle.p0, triangle.p1, triangle.p2,
+//                                  color);
+//             break;
+//         case RASTER_MODE_WIREFRAME:
+//             draw_triangle_wireframe(self, triangle.p0, triangle.p1,
+//             triangle.p2,
+//                                     color);
+//             break;
+//         case RASTER_MODE_SOLID:
+//             draw_triangle_solid(self, triangle.p0, triangle.p1, triangle.p2,
+//                                 color);
+//             break;
+//         default:
+//             break;
+//     }
+// }
+//
+// void Renderer_draw_object3D(Renderer* self, const Camera* camera,
+//                             const Object3D* obj) {
+//     // Vertex Processing
+//     const Mesh* mesh = Object3D_get_mesh(obj);
+//     const Transform transform = Object3D_get_transform(obj);
+//     VertexOut* projected_vertices =
+//         project_to_screen(self, camera, mesh, &transform);
+//     if (!projected_vertices)
+//         return;
+//
+//     // Rasterization
+//     switch (self->raster_mode) {
+//         case RASTER_MODE_POINTS:
+//             draw_object3D_vertices(self, projected_vertices,
+//                                    Mesh_get_vertex_count(mesh));
+//             break;
+//         case RASTER_MODE_WIREFRAME:
+//             draw_mesh_wireframe(self, mesh, projected_vertices);
+//             break;
+//         case RASTER_MODE_SOLID:
+//             draw_mesh_solid(self, mesh, projected_vertices);
+//             break;
+//         default:
+//             break;
+//     }
+//
+//     free(projected_vertices);
+// }
 
-void Renderer_draw_object3D(Renderer* self, const Camera* camera,
-                            const Object3D* obj) {
-    // Vertex Processing
-    const Mesh* mesh = Object3D_get_mesh(obj);
-    const Transform transform = Object3D_get_transform(obj);
-    VertexOut* projected_vertices =
-        project_to_screen(self, camera, mesh, &transform);
-    if (!projected_vertices)
-        return;
+// static void draw_triangle_points(Renderer* self, Vector2 p0, Vector2 p1,
+//                                  Vector2 p2, Color color) {
+//     Renderer_draw_pixel(self, p0.x, p0.y, color);
+//     Renderer_draw_pixel(self, p1.x, p1.y, color);
+//     Renderer_draw_pixel(self, p2.x, p2.y, color);
+// }
+//
+// static void draw_triangle_wireframe(Renderer* self, Vector2 p0, Vector2 p1,
+//                                     Vector2 p2, Color color) {
+//     Renderer_draw_line(self, p0, p1, color);
+//     Renderer_draw_line(self, p1, p2, color);
+//     Renderer_draw_line(self, p0, p2, color);
+// }
 
-    // Rasterization
-    switch (self->raster_mode) {
-        case RASTER_MODE_POINTS:
-            rasterize_points(self, Mesh_get_vertex_count(mesh),
-                             projected_vertices);
-            break;
-        case RASTER_MODE_WIREFRAME:
-            rasterize_wireframe(self, mesh, projected_vertices);
-            break;
-        case RASTER_MODE_SOLID:
-            rasterize_solid(self, mesh, projected_vertices);
-            break;
-        default:
-            break;
-    }
+// static void draw_triangle_solid(Renderer* self, Vector2 p0, Vector2 p1,
+//                                 Vector2 p2, Color color) {
+//     // scanline_rasterization(self, triangle, color);
+//     barycentric_rasterization(self, p0, p1, p2, color);
+// }
+//
+// static void scanline_rasterization(Renderer* self, Triangle triangle,
+//                                    Color color) {}
 
-    free(projected_vertices);
-}
+// static void barycentric_rasterization(Renderer* self, Vector2 a, Vector2 b,
+//                                       Vector2 c, Color color) {
+//     Color colors[3] = {COLOR_RED, COLOR_GREEN, COLOR_BLUE};
+//     bool is_inside;
+//
+//     // Find bounding box with all the candidate pixels
+//     i32 x_min = floor(Math_min(a.x, (Math_min(b.x, c.x))));
+//     i32 y_min = floor(Math_min(a.y, Math_min(b.y, c.y)));
+//     i32 x_max = ceil(Math_max(a.x, (Math_max(b.x, c.x))));
+//     i32 y_max = ceil(Math_max(a.y, Math_max(b.y, c.y)));
+//
+//     // Compute the constant delta values that will be used for horizontal a
+//     // vertical steps in order to avoid computing edge function each
+//     // iteration
+//     f32 delta_w0_col = b.y - c.y;
+//     f32 delta_w1_col = c.y - a.y;
+//     f32 delta_w2_col = a.y - b.y;
+//
+//     f32 delta_w0_row = c.x - b.x;
+//     f32 delta_w1_row = a.x - c.x;
+//     f32 delta_w2_row = b.x - a.x;
+//
+//     // Compute the area of the parallelogram
+//     f32 area = edge(&a, &b, &c);
+//
+//     // Stick to top-left rule filling convention
+//     f32 bias0 = is_top_left(&b, &c) ? 0 : -0.0001;
+//     f32 bias1 = is_top_left(&c, &a) ? 0 : -0.0001;
+//     f32 bias2 = is_top_left(&a, &b) ? 0 : -0.0001;
+//
+//     // Compute edge function to see if pixel is inside triangle
+//     Vector2 p = {x_min + 0.5f, y_min + 0.5f};
+//     f32 w0_row = edge(&b, &c, &p) + bias0;
+//     f32 w1_row = edge(&c, &a, &p) + bias1;
+//     f32 w2_row = edge(&a, &b, &p) + bias2;
+//
+//     // Loop all candidate pixels inside the bounding box
+//     for (i32 y = y_min; y <= y_max; y++) {
+//         f32 w0 = w0_row;
+//         f32 w1 = w1_row;
+//         f32 w2 = w2_row;
+//         for (i32 x = x_min; x <= x_max; x++) {
+//             if (area >= 0.0f) {
+//                 is_inside = w0 >= 0 && w1 >= 0 && w2 >= 0;
+//             } else {
+//                 is_inside = w0 <= 0 && w1 <= 0 && w2 <= 0;
+//             }
+//             if (is_inside) {
+//                 // Compute barycentric coordinates alpha, beta and gamma
+//                 f32 alpha = w0 / area;
+//                 f32 beta = w1 / area;
+//                 f32 gamma = w2 / area;
+//                 u8 r = alpha * Color_get_red(colors[0]) +
+//                        beta * Color_get_red(colors[1]) +
+//                        gamma * Color_get_red(colors[2]);
+//                 u8 g = alpha * Color_get_green(colors[0]) +
+//                        beta * Color_get_green(colors[1]) +
+//                        gamma * Color_get_green(colors[2]);
+//                 u8 b = alpha * Color_get_blue(colors[0]) +
+//                        beta * Color_get_blue(colors[1]) +
+//                        gamma * Color_get_blue(colors[2]);
+//                 Renderer_draw_pixel(self, x, y, Color_create(r, g, b, 0xFF));
+//             }
+//             w0 += delta_w0_col;
+//             w1 += delta_w1_col;
+//             w2 += delta_w2_col;
+//         }
+//         w0_row += delta_w0_row;
+//         w1_row += delta_w1_row;
+//         w2_row += delta_w2_row;
+//     }
+// }
 
-/*
- *************************************************************************
- *************************************************************************
- *
- * STATIC HELPERS
- *
- *************************************************************************
- *************************************************************************
- */
+// bool is_top_left(const Vector2* a, const Vector2* b) {
+//     Vector2 edge = {b->x - a->x, b->y - a->y};
+//     bool is_top_edge = edge.y < MATH_EPSILON && edge.x > 0;
+//     bool is_left_edge = edge.y < 0;
+//     return is_top_edge || is_left_edge;
+// }
+//
+// // return a number > 0 if (x, y) is to the right side, = 0 if is exactly on
+// the
+// // line and < 0 if is to the left side
+// static f32 edge(const Vector2* a, const Vector2* b, const Vector2* p) {
+//     Vector2 ab = {b->x - a->x, b->y - a->y};
+//     Vector2 ap = {p->x - a->x, p->y - a->y};
+//     return ab.x * ap.y - ab.y * ap.x;
+// }
+//
+// static VertexOut* project_to_screen(const Renderer* self, const Camera*
+// camera,
+//                                     const Mesh* mesh,
+//                                     const Transform* transform) {
+//     // Get model_matrix from the transform of
+//     // the object
+//     Matrix4 model_matrix = Transform_get_matrix(transform);
+//     // Get view_matrix from the transform of
+//     // the camera
+//     Matrix4 view_matrix = Camera_get_view_matrix(camera);
+//
+//     // Get camera members in order to get
+//     // projection matrix
+//     f32 fov_y = Camera_get_fov(camera);
+//     f32 near = Camera_get_near(camera);
+//     f32 far = Camera_get_far(camera);
+//     Matrix4 projection_matrix = Matrix4_perspective_projection(
+//         fov_y, self->width / (f32)self->height, near, far);
+//
+//     // Get mesh members
+//     Vector3* mesh_vertices = Mesh_get_vertices(mesh);
+//     u32 vertex_count = Mesh_get_vertex_count(mesh);
+//
+//     VertexOut* projected_vertices = calloc(vertex_count, sizeof(VertexOut));
+//     if (!projected_vertices) {
+//         fprintf(stderr, "project_vertices: "
+//                         "allocation failed\n");
+//         return NULL;
+//     }
+//
+//     for (u32 i = 0; i < vertex_count; i++) {
+//         Vector4 local = Vector4_from_vector3(mesh_vertices[i]);
+//         // Local space -> World space
+//         Vector4 world = Matrix4_multiply_vector(model_matrix, local);
+//         // World space -> Camera space
+//         Vector4 view = Matrix4_multiply_vector(view_matrix, world);
+//         // Camera space -> Clip space
+//         Vector4 clip = Matrix4_multiply_vector(projection_matrix, view);
+//
+//         // Clipping
+//         // if (clip.x < -clip.w || clip.x >
+//         // clip.w)
+//         //     continue;
+//         // if (clip.y < -clip.w || clip.y >
+//         // clip.w)
+//         //     continue;
+//         // if (clip.z < -clip.w || clip.z >
+//         // clip.w)
+//         //     continue;
+//
+//         // Perspective divide
+//         Vector3 ndc = {clip.x / clip.w, clip.y / clip.w, clip.z / clip.w};
+//
+//         // Normalized Device Coordinates
+//         // (NDC) -> Screen coordinates
+//         projected_vertices[i] = viewport_transform(self, &ndc);
+//     }
+//     return projected_vertices;
+// }
+//
+// static VertexOut viewport_transform(const Renderer* self, const Vector3* ndc)
+// {
+//     return (VertexOut){(ndc->x + 1.0f) * self->width * 0.5f,
+//                        (1.0f - ndc->y) * self->height * 0.5f,
+//                        (ndc->z + 1.0f) * 0.5f};
+// }
 
-static void draw_line_DDA(Renderer* self, Vector2 start, Vector2 end,
-                          u32 color) {
-    i32 x1 = (i32)roundf(start.x);
-    i32 y1 = (i32)roundf(start.y);
+// static void draw_object3D_vertices(Renderer* self,
+//                                    const VertexOut* projected_vertices,
+//                                    u32 vertex_count) {
+//     for (u32 i = 0; i < vertex_count; i++) {
+//         Renderer_draw_pixel(self, projected_vertices[i].position.x,
+//                             projected_vertices[i].position.y, COLOR_WHITE);
+//     }
+// }
 
-    i32 x2 = (i32)roundf(end.x);
-    i32 y2 = (i32)roundf(end.y);
+// static void draw_mesh_wireframe(Renderer* self, const Mesh* mesh,
+//                                 const VertexOut* projected_vertices) {
+//     u32* mesh_indices = Mesh_get_indices(mesh);
+//     u32 index_count = Mesh_get_index_count(mesh);
+//     for (u32 i = 0; i < index_count; i += 3) {
+//         Vector2 a = {projected_vertices[mesh_indices[i]].position.x,
+//                      projected_vertices[mesh_indices[i]].position.y};
+//         Vector2 b = {projected_vertices[mesh_indices[i + 1]].position.x,
+//                      projected_vertices[mesh_indices[i + 1]].position.y};
+//         Vector2 c = {projected_vertices[mesh_indices[i + 2]].position.x,
+//                      projected_vertices[mesh_indices[i + 2]].position.y};
+//         Renderer_draw_line(self, a, b, COLOR_WHITE);
+//         Renderer_draw_line(self, b, c, COLOR_WHITE);
+//         Renderer_draw_line(self, c, a, COLOR_WHITE);
+//     }
+// }
 
-    i32 dx = x2 - x1;
-    i32 dy = y2 - y1;
+// static void draw_mesh_solid(Renderer* self, const Mesh* mesh,
+//                             VertexOut* projected_vertices) {
+//     u32* mesh_indices = Mesh_get_indices(mesh);
+//     u32 index_count = Mesh_get_index_count(mesh);
+//     for (u32 i = 0; i < index_count; i += 3) {
+//         VertexOut a = (projected_vertices[mesh_indices[i]]);
+//         VertexOut b = (projected_vertices[mesh_indices[i + 1]]);
+//         VertexOut c = (projected_vertices[mesh_indices[i + 2]]);
+//         fill_vertex_out_triangle(self, &a, &b, &c);
+//     }
+// }
 
-    i32 abs_dx = abs(dx);
-    i32 abs_dy = abs(dy);
-    i32 steps = abs_dx > abs_dy ? abs_dx : abs_dy;
-
-    if (steps == 0) {
-        Renderer_draw_pixel(self, x1, y1, color);
-        return;
-    }
-
-    f32 x_inc = dx / (f32)steps;
-    f32 y_inc = dy / (f32)steps;
-
-    f32 x = (f32)x1;
-    f32 y = (f32)y1;
-
-    for (i32 i = 0; i <= steps; i++) {
-        Renderer_draw_pixel(self, (i32)roundf(x), (i32)roundf(y), color);
-        x += x_inc;
-        y += y_inc;
-    }
-}
-
-static void draw_line_bresenham(Renderer* self, Vector2 start, Vector2 end,
-                                u32 color) {
-    i32 x1 = (i32)roundf(start.x);
-    i32 y1 = (i32)roundf(start.y);
-
-    i32 x2 = (i32)roundf(end.x);
-    i32 y2 = (i32)roundf(end.y);
-
-    i32 dx = abs(x2 - x1);
-    i32 dy = abs(y2 - y1);
-
-    i32 sx = x1 < x2 ? 1 : -1;
-    i32 sy = y1 < y2 ? 1 : -1;
-
-    i32 err = dx - dy;
-
-    while (true) {
-        Renderer_draw_pixel(self, x1, y1, color);
-
-        if (x1 == x2 && y1 == y2)
-            break;
-
-        i32 e2 = 2 * err;
-
-        if (e2 > -dy) {
-            err -= dy;
-            x1 += sx;
-        }
-
-        if (e2 < dx) {
-            err += dx;
-            y1 += sy;
-        }
-    }
-}
-
-static void draw_triangle_points(Renderer* self, Triangle triangle, u32 color) {
-    Renderer_draw_pixel(self, triangle.p0.x, triangle.p0.y, color);
-    Renderer_draw_pixel(self, triangle.p1.x, triangle.p1.y, color);
-    Renderer_draw_pixel(self, triangle.p2.x, triangle.p2.y, color);
-}
-
-static void draw_triangle_wireframe(Renderer* self, Triangle triangle,
-                                    u32 color) {
-    Renderer_draw_line(self, triangle.p0, triangle.p1, color);
-    Renderer_draw_line(self, triangle.p1, triangle.p2, color);
-    Renderer_draw_line(self, triangle.p0, triangle.p2, color);
-}
-
-static void draw_triangle_solid(Renderer* self, Triangle triangle, u32 color) {
-    scanline_rasterization(self, triangle, color);
-}
-
-static void scanline_rasterization(Renderer* self, Triangle triangle,
-                                   u32 color) {
-    // Sort triangle vertices based on ints y
-    // coordinate from smallest to biggest so
-    // that p0.y <= p1.y <= p2.y
-    if (triangle.p0.y > triangle.p1.y)
-        Vector2_swap(&triangle.p0, &triangle.p1);
-    if (triangle.p1.y > triangle.p2.y)
-        Vector2_swap(&triangle.p1, &triangle.p2);
-    if (triangle.p0.y > triangle.p1.y)
-        Vector2_swap(&triangle.p0, &triangle.p1);
-}
-
-static void barycentric_rasterization(Renderer* self, Triangle triangle,
-                                      u32 color) {}
-
-static VertexOut* project_to_screen(const Renderer* self, const Camera* camera,
-                                    const Mesh* mesh,
-                                    const Transform* transform) {
-    // Get model_matrix from the transform of
-    // the object
-    Matrix4 model_matrix = Transform_get_matrix(transform);
-    // Get view_matrix from the transform of
-    // the camera
-    Matrix4 view_matrix = Camera_get_view_matrix(camera);
-
-    // Get camera members in order to get
-    // projection matrix
-    f32 fov_y = Camera_get_fov(camera);
-    f32 near = Camera_get_near(camera);
-    f32 far = Camera_get_far(camera);
-    Matrix4 projection_matrix = Matrix4_perspective_projection(
-        fov_y, self->width / (f32)self->height, near, far);
-
-    // Get mesh members
-    Vector3* mesh_vertices = Mesh_get_vertices(mesh);
-    u32 vertex_count = Mesh_get_vertex_count(mesh);
-
-    VertexOut* projected_vertices = calloc(vertex_count, sizeof(VertexOut));
-    if (!projected_vertices) {
-        fprintf(stderr, "project_vertices: "
-                        "allocation failed\n");
-        return NULL;
-    }
-
-    for (u32 i = 0; i < vertex_count; i++) {
-        Vector4 local = Vector4_from_vector3(mesh_vertices[i]);
-        // Local space -> World space
-        Vector4 world = Matrix4_multiply_vector(model_matrix, local);
-        // World space -> Camera space
-        Vector4 view = Matrix4_multiply_vector(view_matrix, world);
-        // Camera space -> Clip space
-        Vector4 clip = Matrix4_multiply_vector(projection_matrix, view);
-
-        // Clipping
-        // if (clip.x < -clip.w || clip.x >
-        // clip.w)
-        //     continue;
-        // if (clip.y < -clip.w || clip.y >
-        // clip.w)
-        //     continue;
-        // if (clip.z < -clip.w || clip.z >
-        // clip.w)
-        //     continue;
-
-        // Perspective divide
-        projected_vertices[i].ndc.x = clip.x / clip.w;
-        projected_vertices[i].ndc.y = clip.y / clip.w;
-        projected_vertices[i].ndc.z = clip.z / clip.w;
-        // Normalized Device Coordinates
-        // (NDC) -> Screen coordinates
-        projected_vertices[i].screen =
-            viewport_transform(self, projected_vertices[i].ndc);
-    }
-    return projected_vertices;
-}
-
-static Vector2 viewport_transform(const Renderer* self, Vector3 v) {
-    return (Vector2){(v.x + 1.0f) * self->width * 0.5f,
-                     (1.0f - v.y) * self->height * 0.5f};
-}
-
-static void rasterize_points(Renderer* self, u32 vertex_count,
-                             const VertexOut* projected_vertices) {
-    for (u32 i = 0; i < vertex_count; i++) {
-        Renderer_draw_pixel(self, projected_vertices[i].screen.x,
-                            projected_vertices[i].screen.y, COLOR_WHITE);
-    }
-}
-
-static void rasterize_wireframe(Renderer* self, const Mesh* mesh,
-                                const VertexOut* projected_vertices) {
-    u32* mesh_indices = Mesh_get_indices(mesh);
-    u32 index_count = Mesh_get_index_count(mesh);
-    for (u32 i = 0; i < index_count; i += 3) {
-        Vector2 a = projected_vertices[mesh_indices[i]].screen;
-        Vector2 b = projected_vertices[mesh_indices[i + 1]].screen;
-        Vector2 c = projected_vertices[mesh_indices[i + 2]].screen;
-        draw_triangle_wireframe(self, (Triangle){a, b, c}, COLOR_WHITE);
-    }
-}
-
-static void rasterize_solid(Renderer* self, const Mesh* mesh,
-                            const VertexOut* projected_vertices) {
-    u32* mesh_indices = Mesh_get_indices(mesh);
-    u32 index_count = Mesh_get_index_count(mesh);
-    u32 colors[] = {COLOR_WHITE,  COLOR_BLUE, COLOR_CYAN, COLOR_MAGENTA,
-                    COLOR_YELLOW, COLOR_RED,  COLOR_GREEN};
-
-    for (u32 i = 0; i < index_count; i += 3) {
-        Vector2 a = projected_vertices[mesh_indices[i]].screen;
-        Vector2 b = projected_vertices[mesh_indices[i + 1]].screen;
-        Vector2 c = projected_vertices[mesh_indices[i + 2]].screen;
-        draw_triangle_solid(self, (Triangle){a, b, c}, colors[i % 7]);
-    }
-}
+// static void fill_vertex_out_triangle(Renderer* self, VertexOut* a_out,
+//                                      VertexOut* b_out, VertexOut* c_out) {
+//     Color colors[3] = {COLOR_RED, COLOR_GREEN, COLOR_BLUE};
+//     bool is_inside;
+//
+//     Vector2 a = {a_out->position.x, a_out->position.y};
+//     Vector2 b = {b_out->position.x, b_out->position.y};
+//     Vector2 c = {c_out->position.x, c_out->position.y};
+//
+//     // Compute the area of the parallelogram
+//     f32 area = edge(&a, &b, &c);
+//
+//     // Find bounding box with all the candidate pixels
+//     i32 x_min = floor(Math_min(a.x, (Math_min(b.x, c.x))));
+//     i32 y_min = floor(Math_min(a.y, Math_min(b.y, c.y)));
+//     i32 x_max = ceil(Math_max(a.x, (Math_max(b.x, c.x))));
+//     i32 y_max = ceil(Math_max(a.y, Math_max(b.y, c.y)));
+//
+//     x_min = Math_max(0, x_min);
+//     y_min = Math_max(0, y_min);
+//     x_max = Math_min(self->width - 1, x_max);
+//     y_max = Math_min(self->height - 1, y_max);
+//
+//     // Compute the cosntant delta values that will be used for horizontal a
+//     // vertical steps in order to avoid computing edge function each
+//     // iteration
+//     f32 delta_w0_col = b.y - c.y;
+//     f32 delta_w1_col = c.y - a.y;
+//     f32 delta_w2_col = a.y - b.y;
+//
+//     f32 delta_w0_row = c.x - b.x;
+//     f32 delta_w1_row = a.x - c.x;
+//     f32 delta_w2_row = b.x - a.x;
+//
+//     // Stick to top-left rule filling convention
+//     f32 bias0 = is_top_left(&b, &c) ? 0 : -0.0001;
+//     f32 bias1 = is_top_left(&c, &a) ? 0 : -0.0001;
+//     f32 bias2 = is_top_left(&a, &b) ? 0 : -0.0001;
+//
+//     // Compute edge function to see if pixel is inside triangle
+//     Vector2 p = {x_min + 0.5f, y_min + 0.5f};
+//     f32 w0_row = edge(&b, &c, &p) + bias0;
+//     f32 w1_row = edge(&c, &a, &p) + bias1;
+//     f32 w2_row = edge(&a, &b, &p) + bias2;
+//
+//     // Loop all candidate pixels inside the bounding box
+//     for (i32 y = y_min; y <= y_max; y++) {
+//         f32 w0 = w0_row;
+//         f32 w1 = w1_row;
+//         f32 w2 = w2_row;
+//         for (i32 x = x_min; x <= x_max; x++) {
+//             if (area >= 0.0f) {
+//                 is_inside = w0 >= 0 && w1 >= 0 && w2 >= 0;
+//             } else {
+//                 is_inside = w0 <= 0 && w1 <= 0 && w2 <= 0;
+//             }
+//             if (is_inside) {
+//                 // Compute barycentric coordinates alpha, beta and gamma
+//                 f32 alpha = w0 / area;
+//                 f32 beta = w1 / area;
+//                 f32 gamma = w2 / area;
+//                 u8 r = alpha * Color_get_red(colors[0]) +
+//                        beta * Color_get_red(colors[1]) +
+//                        gamma * Color_get_red(colors[2]);
+//                 u8 g = alpha * Color_get_green(colors[0]) +
+//                        beta * Color_get_green(colors[1]) +
+//                        gamma * Color_get_green(colors[2]);
+//                 u8 b = alpha * Color_get_blue(colors[0]) +
+//                        beta * Color_get_blue(colors[1]) +
+//                        gamma * Color_get_blue(colors[2]);
+//                 // Z interpolation
+//                 f32 z = alpha * a_out->position.z + beta * b_out->position.z
+//                 +
+//                         gamma * c_out->position.z;
+//                 if (z < self->depth_buffer[y * self->width + x]) {
+//                     self->depth_buffer[y * self->width + x] = z;
+//                     Renderer_draw_pixel(self, x, y,
+//                                         Color_create(r, g, b, 0xFF));
+//                 }
+//             }
+//             w0 += delta_w0_col;
+//             w1 += delta_w1_col;
+//             w2 += delta_w2_col;
+//         }
+//         w0_row += delta_w0_row;
+//         w1_row += delta_w1_row;
+//         w2_row += delta_w2_row;
+//     }
+// }
