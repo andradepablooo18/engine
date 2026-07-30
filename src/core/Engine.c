@@ -152,13 +152,10 @@ void Engine_draw_line(const Engine* self, Vector2 a, Vector2 b, Color color) {
     Renderer_draw_line(a, b, color, self->renderer);
 }
 
-// void Engine_draw_triangle(Engine* e, Triangle triangle, Color color) {
-//     if (!e) {
-//         fprintf(stderr, "Engine_draw_trialgne: argument is NULL\n");
-//         return;
-//     }
-//     Renderer_draw_triangle(e->renderer, triangle, color);
-// }
+void Engine_draw_triangle(const Engine* self, Triangle triangle) {
+    assert(self);
+    Renderer_draw_triangle(triangle, self->renderer);
+}
 //
 // void Engine_draw_object3D(const Engine* e, const Camera* camera,
 //                           const Object3D* obj) {

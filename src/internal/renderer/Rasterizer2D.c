@@ -1,5 +1,6 @@
 #include "Rasterizer2D.h"
 #include "core/Color.h"
+#include "math/common.h"
 #include <assert.h>
 #include <math.h>
 #include <stdbool.h>
@@ -16,6 +17,8 @@
 
 static inline void put_pixel(i32 x, i32 y, Color color,
                              Color* const frame_buffer, i32 width);
+static void draw_line(Vector2 a, Vector2 b, Color color,
+                      Color* const frame_buffer, i32 width);
 static bool cohenSutherlandClip(Vector2* a, Vector2* b, f32 x_min, f32 y_min,
                                 f32 x_max, f32 y_max);
 static i32 compute_code(Vector2 v, f32 x_min, f32 y_min, f32 x_max, f32 y_max);
@@ -23,6 +26,8 @@ static i32 compute_code(Vector2 v, f32 x_min, f32 y_min, f32 x_max, f32 y_max);
 //                 i32 width);
 static void bresenham(Vector2 a, Vector2 b, Color color,
                       Color* const frame_buffer, i32 width);
+static f32 edge(const Vector2* a, const Vector2* b, const Vector2* p);
+bool is_top_left(const Vector2* a, const Vector2* b);
 
 void Rasterizer2D_draw_pixel(i32 x, i32 y, Color color,
                              Color* const frame_buffer, i32 width, i32 height) {
@@ -43,21 +48,15 @@ void Rasterizer2D_draw_line(Vector2 a, Vector2 b, Color color,
     /* Check if line was accepted (even if it was clipped) in order to be drawn,
      * or rejected in case it is outside the buffer */
     if (cohenSutherlandClip(&a, &b, 0.0f, 0.0f, width - 1.0f, height - 1.0f)) {
-#ifdef DEBUG
-        printf("Line accepted from (%.2f; %.2f) to (%.2f; %.2f)\n", a.x, a.y,
-               b.x, b.y);
-#endif
         // DDA(a, b, color, frame_buffer, width);
         bresenham(a, b, color, frame_buffer, width);
-        put_pixel((i32)roundf(a.x), (i32)roundf(a.y), COLOR_RED, frame_buffer,
-                  width);
-        put_pixel((i32)roundf(b.x), (i32)roundf(b.y), COLOR_WHITE, frame_buffer,
-                  width);
-    } else {
-#ifdef DEBUG
-        printf("Line completely rejected outside the window\n");
-#endif
     }
+}
+
+static void draw_line(Vector2 a, Vector2 b, Color color,
+                      Color* const frame_buffer, i32 width) {
+    // DDA(a, b, color, frame_buffer, width);
+    bresenham(a, b, color, frame_buffer, width);
 }
 
 static bool cohenSutherlandClip(Vector2* a, Vector2* b, f32 x_min, f32 y_min,
@@ -200,4 +199,98 @@ static void bresenham(Vector2 a, Vector2 b, Color color,
             y1 += sy;
         }
     }
+}
+
+void Rasterizer2D_draw_triangle_solid(Vector2 a, Vector2 b, Vector2 c,
+                                      Color* const frame_buffer, i32 width,
+                                      i32 height) {
+    Color colors[3] = {COLOR_RED, COLOR_GREEN, COLOR_BLUE};
+
+    // Find bounding box with all the candidate pixels
+    i32 x_min = floor(Math_min(a.x, (Math_min(b.x, c.x))));
+    i32 y_min = floor(Math_min(a.y, Math_min(b.y, c.y)));
+    i32 x_max = ceil(Math_max(a.x, (Math_max(b.x, c.x))));
+    i32 y_max = ceil(Math_max(a.y, Math_max(b.y, c.y)));
+    // Check boundaries and clip triangle if necessary
+    x_min = Math_max(x_min, 0);
+    y_min = Math_max(y_min, 0);
+    x_max = Math_min(x_max, width - 1);
+    y_max = Math_min(y_max, height - 1);
+
+    // Compute the area of the parallelogram
+    f32 area = edge(&a, &b, &c);
+
+    // Stick to top-left rule filling convention
+    f32 bias0 = is_top_left(&b, &c) ? 0 : -0.0001;
+    f32 bias1 = is_top_left(&c, &a) ? 0 : -0.0001;
+    f32 bias2 = is_top_left(&a, &b) ? 0 : -0.0001;
+
+    // Compute the constant delta values that will be used for horizontal and
+    // vertical steps in order to avoid computing edge function each
+    // iteration
+    f32 delta_w0_col = b.y - c.y;
+    f32 delta_w1_col = c.y - a.y;
+    f32 delta_w2_col = a.y - b.y;
+
+    f32 delta_w0_row = c.x - b.x;
+    f32 delta_w1_row = a.x - c.x;
+    f32 delta_w2_row = b.x - a.x;
+
+    // Compute edge function to see if pixel is inside triangle
+    Vector2 p = {x_min + 0.5f, y_min + 0.5f};
+    f32 w0_row = edge(&b, &c, &p) + bias0;
+    f32 w1_row = edge(&c, &a, &p) + bias1;
+    f32 w2_row = edge(&a, &b, &p) + bias2;
+
+    bool is_inside;
+
+    // Loop all candidate pixels inside the bounding box
+    for (i32 y = y_min; y <= y_max; y++) {
+        f32 w0 = w0_row;
+        f32 w1 = w1_row;
+        f32 w2 = w2_row;
+        for (i32 x = x_min; x <= x_max; x++) {
+            if (area >= 0.0f) {
+                is_inside = w0 >= 0 && w1 >= 0 && w2 >= 0;
+            } else {
+                is_inside = w0 <= 0 && w1 <= 0 && w2 <= 0;
+            }
+            if (is_inside) {
+                // Compute barycentric coordinates alpha, beta and gamma
+                f32 alpha = w0 / area;
+                f32 beta = w1 / area;
+                f32 gamma = w2 / area;
+                u8 r = alpha * Color_get_red(colors[0]) +
+                       beta * Color_get_red(colors[1]) +
+                       gamma * Color_get_red(colors[2]);
+                u8 g = alpha * Color_get_green(colors[0]) +
+                       beta * Color_get_green(colors[1]) +
+                       gamma * Color_get_green(colors[2]);
+                u8 b = alpha * Color_get_blue(colors[0]) +
+                       beta * Color_get_blue(colors[1]) +
+                       gamma * Color_get_blue(colors[2]);
+                put_pixel(x, y, Color_create(r, g, b, 0xFF), frame_buffer,
+                          width);
+            }
+            w0 += delta_w0_col;
+            w1 += delta_w1_col;
+            w2 += delta_w2_col;
+        }
+        w0_row += delta_w0_row;
+        w1_row += delta_w1_row;
+        w2_row += delta_w2_row;
+    }
+}
+
+bool is_top_left(const Vector2* a, const Vector2* b) {
+    Vector2 edge = {b->x - a->x, b->y - a->y};
+    bool is_top_edge = edge.y < MATH_EPSILON && edge.x > 0;
+    bool is_left_edge = edge.y < 0;
+    return is_top_edge || is_left_edge;
+}
+
+static f32 edge(const Vector2* a, const Vector2* b, const Vector2* p) {
+    Vector2 ab = {b->x - a->x, b->y - a->y};
+    Vector2 ap = {p->x - a->x, p->y - a->y};
+    return ab.x * ap.y - ab.y * ap.x;
 }

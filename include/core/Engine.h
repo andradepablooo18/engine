@@ -28,7 +28,7 @@ void Engine_run(Engine* e, const EngineCallbacks* callbacks);
 
 void Engine_draw_pixel(const Engine* self, i32 x, i32 y, Color color);
 void Engine_draw_line(const Engine* self, Vector2 a, Vector2 b, Color color);
-// void Engine_draw_triangle(Engine* e, Triangle triangle, Color color);
+void Engine_draw_triangle(const Engine* self, Triangle triangle);
 // void Engine_draw_object3D(const Engine* e, const Camera* camera,
 //                           const Object3D* obj);
 

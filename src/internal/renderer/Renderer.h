@@ -25,7 +25,7 @@ void Renderer_present(Renderer* self);
 void Renderer_draw_pixel(i32 x, i32 y, Color color, const Renderer* self);
 void Renderer_draw_line(Vector2 a, Vector2 b, Color color,
                         const Renderer* self);
-// void Renderer_draw_triangle(Renderer* self, Triangle triangle, Color color);
+void Renderer_draw_triangle(Triangle triangle, const Renderer* self);
 // void Renderer_draw_object3D(Renderer* self, const Camera* camera,
 //                             const Object3D* obj);
 
