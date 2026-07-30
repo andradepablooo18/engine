@@ -143,6 +143,7 @@ bool Renderer_create(Renderer** self, Window* window, RasterMode raster_mode) {
         Renderer_destroy(self);
         return false;
     }
+    SDL_SetRenderVSync(s->handle, 1);
 
     i32 width = Window_get_width(window);
     i32 height = Window_get_height(window);
@@ -244,25 +245,27 @@ void Renderer_draw_line(Vector2 a, Vector2 b, Color color,
                            self->height);
 }
 
-// void Renderer_draw_triangle(Renderer* self, Triangle triangle, Color color) {
-//     switch (self->raster_mode) {
-//         case RASTER_MODE_POINTS:
-//             draw_triangle_points(self, triangle.p0, triangle.p1, triangle.p2,
-//                                  color);
-//             break;
-//         case RASTER_MODE_WIREFRAME:
-//             draw_triangle_wireframe(self, triangle.p0, triangle.p1,
-//             triangle.p2,
-//                                     color);
-//             break;
-//         case RASTER_MODE_SOLID:
-//             draw_triangle_solid(self, triangle.p0, triangle.p1, triangle.p2,
-//                                 color);
-//             break;
-//         default:
-//             break;
-//     }
-// }
+void Renderer_draw_triangle(Triangle triangle, const Renderer* self) {
+    assert(self);
+    switch (self->raster_mode) {
+        case RASTER_MODE_POINTS:
+            // draw_triangle_points(self, triangle.p0, triangle.p1, triangle.p2,
+            //                      color);
+            break;
+        case RASTER_MODE_WIREFRAME:
+            // draw_triangle_wireframe(self, triangle.p0, triangle.p1,
+            // triangle.p2,
+            //                         color);
+            break;
+        case RASTER_MODE_SOLID:
+            Rasterizer2D_draw_triangle_solid(triangle.p0, triangle.p1,
+                                             triangle.p2, self->color_buffer,
+                                             self->width, self->height);
+            break;
+        default:
+            break;
+    }
+}
 //
 // void Renderer_draw_object3D(Renderer* self, const Camera* camera,
 //                             const Object3D* obj) {
