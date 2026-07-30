@@ -10,9 +10,9 @@ typedef struct Mesh Mesh;
 bool Mesh_create_cube(Mesh** self);
 void Mesh_destroy(Mesh** self);
 
-Vector3* Mesh_get_vertices(const Mesh* self);
+const Vector3* Mesh_get_vertices(const Mesh* self);
 u32 Mesh_get_vertex_count(const Mesh* self);
-u32* Mesh_get_indices(const Mesh* self);
+const u32* Mesh_get_indices(const Mesh* self);
 u32 Mesh_get_index_count(const Mesh* self);
 
 #endif

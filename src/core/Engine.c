@@ -144,27 +144,26 @@ RasterMode Engine_get_raster_mode(const Engine* self) {
 
 void Engine_draw_pixel(const Engine* self, i32 x, i32 y, Color color) {
     assert(self);
-    Renderer_draw_pixel(x, y, color, self->renderer);
+    Renderer_draw_pixel(self->renderer, x, y, color);
 }
 
 void Engine_draw_line(const Engine* self, Vector2 a, Vector2 b, Color color) {
     assert(self);
-    Renderer_draw_line(a, b, color, self->renderer);
+    Renderer_draw_line(self->renderer, a, b, color);
 }
 
 void Engine_draw_triangle(const Engine* self, Triangle triangle) {
     assert(self);
-    Renderer_draw_triangle(triangle, self->renderer);
+    Renderer_draw_triangle(self->renderer, triangle);
 }
-//
-// void Engine_draw_object3D(const Engine* e, const Camera* camera,
-//                           const Object3D* obj) {
-//     if (!e || !camera || !obj) {
-//         fprintf(stderr, "Engine_draw_object3D: some argument is NULL\n");
-//         return;
-//     }
-//     Renderer_draw_object3D(e->renderer, camera, obj);
-// }
+
+void Engine_draw_object3D(const Engine* self, const Camera* camera,
+                          const Object3D* obj) {
+    assert(self);
+    assert(camera);
+    assert(obj);
+    Renderer_draw_object3D(self->renderer, camera, obj);
+}
 
 /*
  ************************************************

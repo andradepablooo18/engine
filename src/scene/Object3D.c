@@ -46,7 +46,7 @@ void Object3D_set_mesh(Object3D* self, Mesh* mesh) {
     self->mesh = mesh;
 }
 
-Mesh* Object3D_get_mesh(const Object3D* self) {
+const Mesh* Object3D_get_mesh(const Object3D* self) {
     if (!self) {
         fprintf(stderr, "Object3D_get_mesh: Object3D* is NULL\n");
         return NULL;
@@ -54,12 +54,12 @@ Mesh* Object3D_get_mesh(const Object3D* self) {
     return self->mesh;
 }
 
-Transform Object3D_get_transform(const Object3D* self) {
+const Transform* Object3D_get_transform(const Object3D* self) {
     if (!self) {
         fprintf(stderr, "Object3D_get_transform: Object3D* is NULL\n");
-        return (Transform){0};
+        return NULL;
     }
-    return self->transform;
+    return &(self->transform);
 }
 
 void Object3D_translate(Object3D* self, Vector3 delta) {

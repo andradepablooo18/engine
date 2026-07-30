@@ -1,4 +1,3 @@
-// #include "core/Color.h"
 // #include "core/Engine.h"
 // #include "core/types.h"
 // #include "input/Input.h"
@@ -22,7 +21,6 @@
 //     }
 //
 //     EngineCallbacks callbacks = {.update = update, .draw = draw};
-//
 //     Engine_run(e, &callbacks);
 //
 //     Engine_destroy(&e);
@@ -46,12 +44,8 @@
 //
 // void draw(Engine* e) {
 //     Triangle t1 = {
-//         .p0 = {200.0f, 200.0f}, .p1 = {200.0f, 0.0f}, .p2 = {400.0f,
-//         200.0f}};
-//     Triangle t2 = {
-//         .p0 = {200.0f, 0.0f}, .p1 = {400.0f, 0.0f}, .p2 = {400.0f, 200.0f}};
-//     Engine_draw_triangle(e, t1, COLOR_GREEN);
-//     Engine_draw_triangle(e, t2, COLOR_GREEN);
+//         .p0 = {-100.0f, 0.0f}, .p1 = {200.0f, 0.0f}, .p2 = {200.0f, 400.0f}};
+//     Engine_draw_triangle(e, t1);
 // }
 //
 // void destroy(void) {}

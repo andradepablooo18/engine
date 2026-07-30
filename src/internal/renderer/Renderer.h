@@ -22,11 +22,11 @@ RasterMode Renderer_get_raster_mode(const Renderer* self);
 void Renderer_clear(Renderer* self, Color color);
 void Renderer_present(Renderer* self);
 
-void Renderer_draw_pixel(i32 x, i32 y, Color color, const Renderer* self);
-void Renderer_draw_line(Vector2 a, Vector2 b, Color color,
-                        const Renderer* self);
-void Renderer_draw_triangle(Triangle triangle, const Renderer* self);
-// void Renderer_draw_object3D(Renderer* self, const Camera* camera,
-//                             const Object3D* obj);
+void Renderer_draw_pixel(const Renderer* self, i32 x, i32 y, Color color);
+void Renderer_draw_line(const Renderer* self, Vector2 a, Vector2 b,
+                        Color color);
+void Renderer_draw_triangle(const Renderer* self, Triangle triangle);
+void Renderer_draw_object3D(const Renderer* self, const Camera* camera,
+                            const Object3D* obj);
 
 #endif

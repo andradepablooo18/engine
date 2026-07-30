@@ -1,4 +1,5 @@
 #include "Rasterizer2D.h"
+#include "RasterizerCommon.h"
 #include "core/Color.h"
 #include "math/common.h"
 #include <assert.h>
@@ -15,48 +16,46 @@
 #define BOTTOM 4 /* 0100 */
 #define TOP 8    /* 1000 */
 
-static inline void put_pixel(i32 x, i32 y, Color color,
-                             Color* const frame_buffer, i32 width);
-static void draw_line(Vector2 a, Vector2 b, Color color,
-                      Color* const frame_buffer, i32 width);
+static void draw_line(Vector2 a, Vector2 b, Color color, Color* frame_buffer,
+                      i32 width);
+static bool clip_line_to_framebuffer(Vector2* a, Vector2* b, i32 width,
+                                     i32 height);
 static bool cohenSutherlandClip(Vector2* a, Vector2* b, f32 x_min, f32 y_min,
                                 f32 x_max, f32 y_max);
 static i32 compute_code(Vector2 v, f32 x_min, f32 y_min, f32 x_max, f32 y_max);
-// static void DDA(Vector2 a, Vector2 b, Color color, Color* const frame_buffer,
+// static void DDA(Vector2 a, Vector2 b, Color color, Color* frame_buffer,
 //                 i32 width);
-static void bresenham(Vector2 a, Vector2 b, Color color,
-                      Color* const frame_buffer, i32 width);
-static f32 edge(const Vector2* a, const Vector2* b, const Vector2* p);
-bool is_top_left(const Vector2* a, const Vector2* b);
+static void bresenham(Vector2 a, Vector2 b, Color color, Color* frame_buffer,
+                      i32 width);
 
-void Rasterizer2D_draw_pixel(i32 x, i32 y, Color color,
-                             Color* const frame_buffer, i32 width, i32 height) {
+void Rasterizer2D_draw_pixel(i32 x, i32 y, Color color, Color* frame_buffer,
+                             i32 width, i32 height) {
     assert(frame_buffer);
     assert(x >= 0 && x < width);
     assert(y >= 0 && y < height);
     frame_buffer[y * width + x] = color;
 }
 
-static inline void put_pixel(i32 x, i32 y, Color color,
-                             Color* const frame_buffer, i32 width) {
-    frame_buffer[y * width + x] = color;
-}
-
 void Rasterizer2D_draw_line(Vector2 a, Vector2 b, Color color,
-                            Color* const frame_buffer, i32 width, i32 height) {
+                            Color* frame_buffer, i32 width, i32 height) {
     assert(frame_buffer);
     /* Check if line was accepted (even if it was clipped) in order to be drawn,
      * or rejected in case it is outside the buffer */
-    if (cohenSutherlandClip(&a, &b, 0.0f, 0.0f, width - 1.0f, height - 1.0f)) {
+    if (clip_line_to_framebuffer(&a, &b, width, height)) {
         // DDA(a, b, color, frame_buffer, width);
         bresenham(a, b, color, frame_buffer, width);
     }
 }
 
-static void draw_line(Vector2 a, Vector2 b, Color color,
-                      Color* const frame_buffer, i32 width) {
+static void draw_line(Vector2 a, Vector2 b, Color color, Color* frame_buffer,
+                      i32 width) {
     // DDA(a, b, color, frame_buffer, width);
     bresenham(a, b, color, frame_buffer, width);
+}
+
+static bool clip_line_to_framebuffer(Vector2* a, Vector2* b, i32 width,
+                                     i32 height) {
+    return cohenSutherlandClip(a, b, 0.0f, 0.0f, width - 1.0f, height - 1.0f);
 }
 
 static bool cohenSutherlandClip(Vector2* a, Vector2* b, f32 x_min, f32 y_min,
@@ -133,7 +132,7 @@ static i32 compute_code(Vector2 v, f32 x_min, f32 y_min, f32 x_max, f32 y_max) {
     return code;
 }
 
-// static void DDA(Vector2 a, Vector2 b, Color color, Color* const frame_buffer,
+// static void DDA(Vector2 a, Vector2 b, Color color, Color* frame_buffer,
 //                 i32 width) {
 //     i32 x1 = (i32)roundf(a.x);
 //     i32 y1 = (i32)roundf(a.y);
@@ -165,8 +164,8 @@ static i32 compute_code(Vector2 v, f32 x_min, f32 y_min, f32 x_max, f32 y_max) {
 //     }
 // }
 
-static void bresenham(Vector2 a, Vector2 b, Color color,
-                      Color* const frame_buffer, i32 width) {
+static void bresenham(Vector2 a, Vector2 b, Color color, Color* frame_buffer,
+                      i32 width) {
     i32 x1 = (i32)roundf(a.x);
     i32 y1 = (i32)roundf(a.y);
 
@@ -202,7 +201,7 @@ static void bresenham(Vector2 a, Vector2 b, Color color,
 }
 
 void Rasterizer2D_draw_triangle_solid(Vector2 a, Vector2 b, Vector2 c,
-                                      Color* const frame_buffer, i32 width,
+                                      Color* frame_buffer, i32 width,
                                       i32 height) {
     Color colors[3] = {COLOR_RED, COLOR_GREEN, COLOR_BLUE};
 
@@ -218,12 +217,12 @@ void Rasterizer2D_draw_triangle_solid(Vector2 a, Vector2 b, Vector2 c,
     y_max = Math_min(y_max, height - 1);
 
     // Compute the area of the parallelogram
-    f32 area = edge(&a, &b, &c);
+    f32 area = edge(a, b, c);
 
     // Stick to top-left rule filling convention
-    f32 bias0 = is_top_left(&b, &c) ? 0 : -0.0001;
-    f32 bias1 = is_top_left(&c, &a) ? 0 : -0.0001;
-    f32 bias2 = is_top_left(&a, &b) ? 0 : -0.0001;
+    f32 bias0 = is_top_left(b, c) ? 0 : -0.0001;
+    f32 bias1 = is_top_left(c, a) ? 0 : -0.0001;
+    f32 bias2 = is_top_left(a, b) ? 0 : -0.0001;
 
     // Compute the constant delta values that will be used for horizontal and
     // vertical steps in order to avoid computing edge function each
@@ -238,9 +237,9 @@ void Rasterizer2D_draw_triangle_solid(Vector2 a, Vector2 b, Vector2 c,
 
     // Compute edge function to see if pixel is inside triangle
     Vector2 p = {x_min + 0.5f, y_min + 0.5f};
-    f32 w0_row = edge(&b, &c, &p) + bias0;
-    f32 w1_row = edge(&c, &a, &p) + bias1;
-    f32 w2_row = edge(&a, &b, &p) + bias2;
+    f32 w0_row = edge(b, c, p) + bias0;
+    f32 w1_row = edge(c, a, p) + bias1;
+    f32 w2_row = edge(a, b, p) + bias2;
 
     bool is_inside;
 
@@ -280,17 +279,4 @@ void Rasterizer2D_draw_triangle_solid(Vector2 a, Vector2 b, Vector2 c,
         w1_row += delta_w1_row;
         w2_row += delta_w2_row;
     }
-}
-
-bool is_top_left(const Vector2* a, const Vector2* b) {
-    Vector2 edge = {b->x - a->x, b->y - a->y};
-    bool is_top_edge = edge.y < MATH_EPSILON && edge.x > 0;
-    bool is_left_edge = edge.y < 0;
-    return is_top_edge || is_left_edge;
-}
-
-static f32 edge(const Vector2* a, const Vector2* b, const Vector2* p) {
-    Vector2 ab = {b->x - a->x, b->y - a->y};
-    Vector2 ap = {p->x - a->x, p->y - a->y};
-    return ab.x * ap.y - ab.y * ap.x;
 }

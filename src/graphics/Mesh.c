@@ -70,7 +70,7 @@ void Mesh_destroy(Mesh** self) {
     *self = NULL;
 }
 
-Vector3* Mesh_get_vertices(const Mesh* self) {
+const Vector3* Mesh_get_vertices(const Mesh* self) {
     if (!self) {
         fprintf(stderr, "Mesh_get_vertices: Mesh* is NULL\n");
         return NULL;
@@ -86,7 +86,7 @@ u32 Mesh_get_vertex_count(const Mesh* self) {
     return self->vertex_count;
 }
 
-u32* Mesh_get_indices(const Mesh* self) {
+const u32* Mesh_get_indices(const Mesh* self) {
     if (!self) {
         fprintf(stderr, "Mesh_get_indices: Mesh* is NULL\n");
         return NULL;
