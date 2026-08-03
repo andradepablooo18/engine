@@ -48,8 +48,8 @@ bool Engine_create(Engine** engine) {
         return false;
     }
 
-    // Rasterization mode is wireframe by default
-    if (!Renderer_create(&e->renderer, e->window, RASTER_MODE_WIREFRAME)) {
+    // Rasterization mode is solid by default
+    if (!Renderer_create(&e->renderer, e->window, RASTER_MODE_SOLID)) {
         Engine_destroy(engine);
         return false;
     }

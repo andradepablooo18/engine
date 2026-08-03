@@ -1,5 +1,6 @@
 #include "Rasterizer2D.h"
 #include "RasterizerCommon.h"
+#include "SDL3/SDL.h"
 #include "core/Color.h"
 #include "math/common.h"
 #include <assert.h>

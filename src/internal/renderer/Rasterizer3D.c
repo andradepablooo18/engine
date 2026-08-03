@@ -1,13 +1,14 @@
 #include "Rasterizer3D.h"
 #include "RasterizerCommon.h"
 #include "graphics/Mesh.h"
+#include "graphics/Texture.h"
+#include "graphics/Vertex.h"
 #include "graphics/VertexOut.h"
 #include "math/Matrix4.h"
 #include "math/Vector3.h"
 #include "math/Vector4.h"
 #include "math/common.h"
 #include "scene/Transform.h"
-#include <SDL3/SDL.h>
 #include <assert.h>
 #include <math.h>
 #include <stdio.h>
@@ -15,11 +16,12 @@
 
 static VertexOut* project_Object3D_vertices_to_screen(
     const Camera* camera, const Transform* transform,
-    const Vector3* mesh_vertices, u32 vertex_count, i32 width, i32 height);
+    const Vertex* mesh_vertices, u32 vertex_count, i32 width, i32 height);
 static VertexOut ndc_to_screen(Vector3 ndc, i32 width, i32 height);
 static void barycentric_rasterization(const VertexOut* a_out,
                                       const VertexOut* b_out,
                                       const VertexOut* c_out,
+                                      const Texture* texture,
                                       Color* frame_buffer, f32* depth_buffer,
                                       i32 width, i32 height);
 
@@ -31,7 +33,7 @@ void Rasterizer3D_draw_object3D_solid(const Camera* camera, const Object3D* obj,
     /* 1. Vertex Processing */
     const Transform* transform = Object3D_get_transform(obj);
     const Mesh* mesh = Object3D_get_mesh(obj);
-    const Vector3* vertices = Mesh_get_vertices(mesh);
+    const Vertex* vertices = Mesh_get_vertices(mesh);
     u32 vertex_count = Mesh_get_vertex_count(mesh);
 
     VertexOut* projected_vertices = project_Object3D_vertices_to_screen(
@@ -48,20 +50,27 @@ void Rasterizer3D_draw_object3D_solid(const Camera* camera, const Object3D* obj,
     const u32* mesh_indices = Mesh_get_indices(mesh);
     u32 index_count = Mesh_get_index_count(mesh);
 
+    /* --- Just temporary */
+    Texture* checker = NULL;
+    if (!Texture_create_checker(&checker))
+        return;
+    /* --- Just temporary */
+
     for (u32 i = 0; i < index_count; i += 3) {
         VertexOut a = projected_vertices[mesh_indices[i]];
         VertexOut b = projected_vertices[mesh_indices[i + 1]];
         VertexOut c = projected_vertices[mesh_indices[i + 2]];
-        barycentric_rasterization(&a, &b, &c, frame_buffer, depth_buffer, width,
-                                  height);
+        barycentric_rasterization(&a, &b, &c, checker, frame_buffer,
+                                  depth_buffer, width, height);
     }
 
     free(projected_vertices);
+    Texture_destroy(&checker);
 }
 
 static VertexOut* project_Object3D_vertices_to_screen(
     const Camera* camera, const Transform* transform,
-    const Vector3* mesh_vertices, u32 vertex_count, i32 width, i32 height) {
+    const Vertex* mesh_vertices, u32 vertex_count, i32 width, i32 height) {
     // Get model_matrix from the transform of
     // the object
     Matrix4 model_matrix = Transform_get_matrix(transform);
@@ -84,7 +93,7 @@ static VertexOut* project_Object3D_vertices_to_screen(
     }
 
     for (u32 i = 0; i < vertex_count; i++) {
-        Vector4 local = Vector4_from_vector3(mesh_vertices[i]);
+        Vector4 local = Vector4_from_vector3(mesh_vertices[i].position);
         // Local space -> World space
         Vector4 world = Matrix4_multiply_vector(model_matrix, local);
         // World space -> Camera space
@@ -106,6 +115,7 @@ static VertexOut* project_Object3D_vertices_to_screen(
         // Normalized Device Coordinates
         // (NDC) -> Screen coordinates
         projected_vertices[i] = ndc_to_screen(ndc, width, height);
+        projected_vertices[i].uv = mesh_vertices[i].uv;
     }
     return projected_vertices;
 }
@@ -119,9 +129,10 @@ static VertexOut ndc_to_screen(Vector3 ndc, i32 width, i32 height) {
 static void barycentric_rasterization(const VertexOut* a_out,
                                       const VertexOut* b_out,
                                       const VertexOut* c_out,
+                                      const Texture* texture,
                                       Color* frame_buffer, f32* depth_buffer,
                                       i32 width, i32 height) {
-    Color colors[3] = {COLOR_RED, COLOR_GREEN, COLOR_BLUE};
+    // Color colors[3] = {COLOR_RED, COLOR_GREEN, COLOR_BLUE};
     Vector2 a = {a_out->screen.x, a_out->screen.y};
     Vector2 b = {b_out->screen.x, b_out->screen.y};
     Vector2 c = {c_out->screen.x, c_out->screen.y};
@@ -180,23 +191,28 @@ static void barycentric_rasterization(const VertexOut* a_out,
                 f32 alpha = w0 / area;
                 f32 beta = w1 / area;
                 f32 gamma = w2 / area;
-                u8 r = alpha * Color_get_red(colors[0]) +
-                       beta * Color_get_red(colors[1]) +
-                       gamma * Color_get_red(colors[2]);
-                u8 g = alpha * Color_get_green(colors[0]) +
-                       beta * Color_get_green(colors[1]) +
-                       gamma * Color_get_green(colors[2]);
-                u8 b = alpha * Color_get_blue(colors[0]) +
-                       beta * Color_get_blue(colors[1]) +
-                       gamma * Color_get_blue(colors[2]);
+                // u8 r = alpha * Color_get_red(colors[0]) +
+                //        beta * Color_get_red(colors[1]) +
+                //        gamma * Color_get_red(colors[2]);
+                // u8 g = alpha * Color_get_green(colors[0]) +
+                //        beta * Color_get_green(colors[1]) +
+                //        gamma * Color_get_green(colors[2]);
+                // u8 b = alpha * Color_get_blue(colors[0]) +
+                //        beta * Color_get_blue(colors[1]) +
+                //        gamma * Color_get_blue(colors[2]);
+                // UV interpolation (texture mapping)
+                f32 u = alpha * a_out->uv.x + beta * b_out->uv.x +
+                        gamma * c_out->uv.x;
+                f32 v = alpha * a_out->uv.y + beta * b_out->uv.y +
+                        gamma * c_out->uv.y;
+                Color color = Texture_sample(texture, u, v);
                 // Z interpolation
                 f32 z = alpha * a_out->depth + beta * b_out->depth +
                         gamma * c_out->depth;
-                if (z < depth_buffer[y * width + x]) {
-                    depth_buffer[y * width + x] = z;
-                    put_pixel(x, y, Color_create(r, g, b, 0xFF), frame_buffer,
-                              width);
-                }
+                // if (z < depth_buffer[y * width + x]) {
+                //     depth_buffer[y * width + x] = z;
+                put_pixel(x, y, COLOR_WHITE, frame_buffer, width);
+                // }
             }
             w0 += delta_w0_col;
             w1 += delta_w1_col;

@@ -6,6 +6,7 @@
 typedef struct VertexOut {
         Vector2 screen;
         f32 depth;
+        Vector2 uv;
 } VertexOut;
 
 #endif
