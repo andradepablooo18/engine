@@ -5,6 +5,7 @@
 #include "graphics/Vertex.h"
 #include "graphics/VertexOut.h"
 #include "math/Matrix4.h"
+#include "math/Vector2i.h"
 #include "math/Vector3.h"
 #include "math/Vector4.h"
 #include "math/common.h"
@@ -13,6 +14,11 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+/* Rasterizer3D works with 28.4 fixed point numbers */
+/* (i.e. 16 possible states for fractional part) */
+#define SUB_STEP 16
+#define SUB_HALF 8
 
 static VertexOut* project_Object3D_vertices_to_screen(
     const Camera* camera, const Transform* transform,
@@ -126,93 +132,85 @@ static VertexOut ndc_to_screen(Vector3 ndc, i32 width, i32 height) {
                        .depth = (ndc.z + 1.0f) * 0.5f};
 }
 
-static void barycentric_rasterization(const VertexOut* a_out,
-                                      const VertexOut* b_out,
-                                      const VertexOut* c_out,
+static void barycentric_rasterization(const VertexOut* a, const VertexOut* b,
+                                      const VertexOut* c,
                                       const Texture* texture,
                                       Color* frame_buffer, f32* depth_buffer,
                                       i32 width, i32 height) {
-    // Color colors[3] = {COLOR_RED, COLOR_GREEN, COLOR_BLUE};
-    Vector2 a = {a_out->screen.x, a_out->screen.y};
-    Vector2 b = {b_out->screen.x, b_out->screen.y};
-    Vector2 c = {c_out->screen.x, c_out->screen.y};
+    // 1. Convert screen coordinates to fixed point integers
+    Vector2i a_i = {.x = (i32)roundf(a->screen.x * SUB_STEP),
+                    .y = (i32)roundf(a->screen.y * SUB_STEP)};
+    Vector2i b_i = {.x = (i32)roundf(b->screen.x * SUB_STEP),
+                    .y = (i32)roundf(b->screen.y * SUB_STEP)};
+    Vector2i c_i = {.x = (i32)roundf(c->screen.x * SUB_STEP),
+                    .y = (i32)roundf(c->screen.y * SUB_STEP)};
 
-    // Find bounding box with all the candidate pixels
-    i32 x_min = floor(Math_min(a.x, (Math_min(b.x, c.x))));
-    i32 y_min = floor(Math_min(a.y, Math_min(b.y, c.y)));
-    i32 x_max = ceil(Math_max(a.x, (Math_max(b.x, c.x))));
-    i32 y_max = ceil(Math_max(a.y, Math_max(b.y, c.y)));
-    // Check boundaries and clip triangle if necessary
-    x_min = Math_max(x_min, 0);
-    y_min = Math_max(y_min, 0);
-    x_max = Math_min(x_max, width - 1);
-    y_max = Math_min(y_max, height - 1);
+    // 2. Compute bounding box (in real pixels) with all the candidate pixels
+    i32 x_min = Math_max(0, Math_min(a_i.x, Math_min(b_i.x, c_i.x)) / SUB_STEP);
+    i32 y_min = Math_max(0, Math_min(a_i.y, Math_min(b_i.y, c_i.y)) / SUB_STEP);
+    // Add (SUB_STEP - 1) before division to ceil number
+    i32 x_max = Math_min(
+        width - 1,
+        (Math_max(a_i.x, Math_max(b_i.x, c_i.x)) + SUB_STEP - 1) / SUB_STEP);
+    i32 y_max = Math_min(
+        height - 1,
+        (Math_max(a_i.y, Math_max(b_i.y, c_i.y)) + SUB_STEP - 1) / SUB_STEP);
 
-    // Compute the area of the parallelogram
-    f32 area = edge(a, b, c);
+    // 3. Compute the area of the parallelogram in integers
+    i64 area = edge(a_i, b_i, c_i);
+    // 4. Backface Culling CCW
+    // Do not draw triangle f the area is <= 0, the triangle is Clockwise (it is
+    // facing away) or it is a line
+    if (area <= 0)
+        return;
 
-    // Stick to top-left rule filling convention
-    f32 bias0 = is_top_left(b, c) ? 0 : -0.0001;
-    f32 bias1 = is_top_left(c, a) ? 0 : -0.0001;
-    f32 bias2 = is_top_left(a, b) ? 0 : -0.0001;
+    // 5. Stick to Top-left Rule.
+    // If edge is not top_left then substract 1 from w to make w >= 0 fail
+    i32 bias0 = is_top_left(b_i, c_i) ? 0 : -1;
+    i32 bias1 = is_top_left(c_i, a_i) ? 0 : -1;
+    i32 bias2 = is_top_left(a_i, b_i) ? 0 : -1;
 
-    // Compute the cosntant delta values that will be used for horizontal a
+    // 7. Compute the constant delta values that will be used for horizontal a
     // vertical steps in order to avoid computing edge function each
     // iteration
-    f32 delta_w0_col = b.y - c.y;
-    f32 delta_w1_col = c.y - a.y;
-    f32 delta_w2_col = a.y - b.y;
+    i64 delta_w0_col = (i64)(b_i.y - c_i.y) * SUB_STEP;
+    i64 delta_w1_col = (i64)(c_i.y - a_i.y) * SUB_STEP;
+    i64 delta_w2_col = (i64)(a_i.y - b_i.y) * SUB_STEP;
 
-    f32 delta_w0_row = c.x - b.x;
-    f32 delta_w1_row = a.x - c.x;
-    f32 delta_w2_row = b.x - a.x;
+    i64 delta_w0_row = (i64)(c_i.x - b_i.x) * SUB_STEP;
+    i64 delta_w1_row = (i64)(a_i.x - c_i.x) * SUB_STEP;
+    i64 delta_w2_row = (i64)(b_i.x - a_i.x) * SUB_STEP;
 
-    // Compute edge function to see if pixel is inside triangle
-    Vector2 p = {x_min + 0.5f, y_min + 0.5f};
-    f32 w0_row = edge(b, c, p) + bias0;
-    f32 w1_row = edge(c, a, p) + bias1;
-    f32 w2_row = edge(a, b, p) + bias2;
-
-    bool is_inside;
+    // 8. Compute initial edge function to see if pixel is inside triangle
+    Vector2i p = {x_min * SUB_STEP + SUB_HALF, y_min * SUB_STEP + SUB_HALF};
+    i64 w0_row = edge(b_i, c_i, p) + bias0;
+    i64 w1_row = edge(c_i, a_i, p) + bias1;
+    i64 w2_row = edge(a_i, b_i, p) + bias2;
 
     // Loop all candidate pixels inside the bounding box
     for (i32 y = y_min; y <= y_max; y++) {
-        f32 w0 = w0_row;
-        f32 w1 = w1_row;
-        f32 w2 = w2_row;
+        i64 w0 = w0_row;
+        i64 w1 = w1_row;
+        i64 w2 = w2_row;
         for (i32 x = x_min; x <= x_max; x++) {
-            if (area >= 0.0f) {
-                is_inside = w0 >= 0 && w1 >= 0 && w2 >= 0;
-            } else {
-                is_inside = w0 <= 0 && w1 <= 0 && w2 <= 0;
-            }
+            bool is_inside = w0 >= 0 && w1 >= 0 && w2 >= 0;
             if (is_inside) {
                 // Compute barycentric coordinates alpha, beta and gamma
-                f32 alpha = w0 / area;
-                f32 beta = w1 / area;
-                f32 gamma = w2 / area;
-                // u8 r = alpha * Color_get_red(colors[0]) +
-                //        beta * Color_get_red(colors[1]) +
-                //        gamma * Color_get_red(colors[2]);
-                // u8 g = alpha * Color_get_green(colors[0]) +
-                //        beta * Color_get_green(colors[1]) +
-                //        gamma * Color_get_green(colors[2]);
-                // u8 b = alpha * Color_get_blue(colors[0]) +
-                //        beta * Color_get_blue(colors[1]) +
-                //        gamma * Color_get_blue(colors[2]);
+                f32 alpha = w0 / (f32)area;
+                f32 beta = w1 / (f32)area;
+                f32 gamma = w2 / (f32)area;
+
                 // UV interpolation (texture mapping)
-                f32 u = alpha * a_out->uv.x + beta * b_out->uv.x +
-                        gamma * c_out->uv.x;
-                f32 v = alpha * a_out->uv.y + beta * b_out->uv.y +
-                        gamma * c_out->uv.y;
+                f32 u = alpha * a->uv.x + beta * b->uv.x + gamma * c->uv.x;
+                f32 v = alpha * a->uv.y + beta * b->uv.y + gamma * c->uv.y;
                 Color color = Texture_sample(texture, u, v);
+
                 // Z interpolation
-                f32 z = alpha * a_out->depth + beta * b_out->depth +
-                        gamma * c_out->depth;
-                // if (z < depth_buffer[y * width + x]) {
-                //     depth_buffer[y * width + x] = z;
-                put_pixel(x, y, COLOR_WHITE, frame_buffer, width);
-                // }
+                f32 z = alpha * a->depth + beta * b->depth + gamma * c->depth;
+                if (z < depth_buffer[y * width + x]) {
+                    depth_buffer[y * width + x] = z;
+                    put_pixel(x, y, color, frame_buffer, width);
+                }
             }
             w0 += delta_w0_col;
             w1 += delta_w1_col;
