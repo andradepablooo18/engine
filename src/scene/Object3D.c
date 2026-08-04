@@ -2,10 +2,10 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-
 struct Object3D {
         Mesh* mesh;
         Transform transform;
+        Material* material;
 };
 
 bool Object3D_create(Object3D** self) {
@@ -17,6 +17,7 @@ bool Object3D_create(Object3D** self) {
     }
     (*self)->mesh = NULL;
     (*self)->transform = Transform_identity();
+    (*self)->material = NULL;
     return true;
 }
 
@@ -39,6 +40,11 @@ void Object3D_set_mesh(Object3D* self, Mesh* mesh) {
     self->mesh = mesh;
 }
 
+void Object3D_set_material(Object3D* self, Material* material) {
+    assert(self);
+    self->material = material;
+}
+
 const Mesh* Object3D_get_mesh(const Object3D* self) {
     assert(self);
     return self->mesh;
@@ -47,6 +53,11 @@ const Mesh* Object3D_get_mesh(const Object3D* self) {
 const Transform* Object3D_get_transform(const Object3D* self) {
     assert(self);
     return &(self->transform);
+}
+
+const Material* Object3D_get_material(const Object3D* self) {
+    assert(self);
+    return self->material;
 }
 
 void Object3D_translate(Object3D* self, Vector3 delta) {

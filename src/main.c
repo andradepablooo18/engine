@@ -25,7 +25,9 @@
 #include "core/Engine.h"
 #include "core/types.h"
 #include "graphics/Camera.h"
+#include "graphics/Material.h"
 #include "graphics/Mesh.h"
+#include "graphics/Texture.h"
 #include "input/Input.h"
 #include "input/keys.h"
 #include "math/common.h"
@@ -51,6 +53,8 @@ void rotate_quad_when_pressed(Input* input, f32 sensitivity);
 Input* input = NULL;
 Camera* camera = NULL;
 Mesh* quad_mesh = NULL;
+Texture* quad_texture = NULL;
+Material* quad_material = NULL;
 Object3D* quad = NULL;
 
 int main(void) {
@@ -79,15 +83,27 @@ bool setup(Engine* e) {
     if (!Camera_create(&camera)) {
         return false;
     }
-    if (!Mesh_create_quad(&quad_mesh)) {
-        return false;
-    }
     if (!Object3D_create(&quad)) {
         return false;
     }
-
-    Object3D_set_mesh(quad, quad_mesh);
     Object3D_set_position(quad, (Vector3){0.0f, 0.0f, -10.0f});
+
+    if (!Mesh_create_quad(&quad_mesh)) {
+        return false;
+    }
+    Object3D_set_mesh(quad, quad_mesh);
+
+    if (!Material_create(&quad_material)) {
+        return false;
+    }
+    if (!Texture_create(&quad_texture, "assets/wood.png")) {
+        return false;
+    }
+    Material_set_texture(quad_material, quad_texture);
+    Material_set_color(quad_material, COLOR_RED);
+
+    Object3D_set_material(quad, quad_material);
+
     return true;
 }
 
@@ -103,6 +119,8 @@ void draw(Engine* e) { Engine_draw_object3D(e, camera, quad); }
 void destroy(void) {
     Camera_destroy(&camera);
     Mesh_destroy(&quad_mesh);
+    Texture_destroy(&quad_texture);
+    Material_destroy(&quad_material);
     Object3D_destroy(&quad);
 }
 

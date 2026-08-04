@@ -61,6 +61,7 @@
 //     if (!Object3D_create(&quad)) {
 //         return false;
 //     }
+//
 //     Object3D_set_mesh(quad, quad_mesh);
 //     Object3D_set_position(quad, (Vector3){0.0f, 0.0f, -10.0f});
 //     return true;

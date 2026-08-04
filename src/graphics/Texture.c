@@ -11,26 +11,6 @@ struct Texture {
         u32 height;
 };
 
-// bool Texture_create(Texture** self, u32 width, u32 height) {
-//     assert(self);
-//     *self = calloc(1, sizeof(Texture));
-//     if (!*self) {
-//         fprintf(stderr, "Texture_create: Texture allocation failed\n");
-//         return false;
-//     }
-//
-//     Texture* const s = *self;
-//     s->width = width;
-//     s->height = height;
-//     s->pixels = calloc(s->width * s->height, sizeof(Color));
-//     if (!s->pixels) {
-//         fprintf(stderr, "Texture_create: Texture's pixels allocation
-//         failed\n"); return false;
-//     }
-//
-//     return true;
-// }
-
 bool Texture_create(Texture** self, const char* path) {
     assert(self);
 

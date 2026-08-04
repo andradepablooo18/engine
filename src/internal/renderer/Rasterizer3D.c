@@ -26,7 +26,7 @@ static VertexOut* project_Object3D_vertices_to_screen(
 static VertexOut ndc_to_screen(Vector3 ndc, i32 width, i32 height);
 static void barycentric_rasterization(const VertexOut* a, const VertexOut* b,
                                       const VertexOut* c,
-                                      const Texture* texture,
+                                      const Material* Material,
                                       Color* frame_buffer, f32* depth_buffer,
                                       i32 width, i32 height);
 
@@ -35,6 +35,7 @@ void Rasterizer3D_draw_object3D_solid(const Camera* camera, const Object3D* obj,
                                       i32 width, i32 height) {
     assert(frame_buffer);
     assert(depth_buffer);
+
     /* 1. Vertex Processing */
     const Transform* transform = Object3D_get_transform(obj);
     const Mesh* mesh = Object3D_get_mesh(obj);
@@ -52,14 +53,9 @@ void Rasterizer3D_draw_object3D_solid(const Camera* camera, const Object3D* obj,
     }
 
     /* 2. Rasterization */
+    const Material* material = Object3D_get_material(obj);
     const u32* mesh_indices = Mesh_get_indices(mesh);
     u32 index_count = Mesh_get_index_count(mesh);
-
-    /* --- Just temporary */
-    Texture* wood = NULL;
-    if (!Texture_create(&wood, "assets/wood.png"))
-        return;
-    /* --- Just temporary */
 
     for (u32 i = 0; i < index_count; i += 3) {
         VertexOut a = projected_vertices[mesh_indices[i]];
@@ -72,12 +68,11 @@ void Rasterizer3D_draw_object3D_solid(const Camera* camera, const Object3D* obj,
         if (a.inv_w <= 0.0f || b.inv_w <= 0.0f || c.inv_w <= 0.0f) {
             continue;
         }
-        barycentric_rasterization(&a, &b, &c, wood, frame_buffer, depth_buffer,
-                                  width, height);
+        barycentric_rasterization(&a, &b, &c, material, frame_buffer,
+                                  depth_buffer, width, height);
     }
 
     free(projected_vertices);
-    Texture_destroy(&wood);
 }
 
 static VertexOut* project_Object3D_vertices_to_screen(
@@ -131,7 +126,7 @@ static VertexOut ndc_to_screen(Vector3 ndc, i32 width, i32 height) {
 
 static void barycentric_rasterization(const VertexOut* a, const VertexOut* b,
                                       const VertexOut* c,
-                                      const Texture* texture,
+                                      const Material* material,
                                       Color* frame_buffer, f32* depth_buffer,
                                       i32 width, i32 height) {
     // 1. Convert screen coordinates to fixed point integers
@@ -184,14 +179,30 @@ static void barycentric_rasterization(const VertexOut* a, const VertexOut* b,
     i64 w1_row = edge(c_i, a_i, p) + bias1;
     i64 w2_row = edge(a_i, b_i, p) + bias2;
 
-    f32 u_over_w_a = a->uv.x * a->inv_w;
-    f32 v_over_w_a = a->uv.y * a->inv_w;
+    Color material_color = Material_get_color(material);
+    const Texture* texture = Material_get_texture(material);
+    bool has_texture = texture != NULL;
 
-    f32 u_over_w_b = b->uv.x * b->inv_w;
-    f32 v_over_w_b = b->uv.y * b->inv_w;
+    f32 u_over_w_a = 0.0f;
+    f32 v_over_w_a = 0.0f;
 
-    f32 u_over_w_c = c->uv.x * c->inv_w;
-    f32 v_over_w_c = c->uv.y * c->inv_w;
+    f32 u_over_w_b = 0.0f;
+    f32 v_over_w_b = 0.0f;
+
+    f32 u_over_w_c = 0.0f;
+    f32 v_over_w_c = 0.0f;
+
+    if (has_texture) {
+        // Compute u/w and v/w for each vertex
+        u_over_w_a = a->uv.x * a->inv_w;
+        v_over_w_a = a->uv.y * a->inv_w;
+
+        u_over_w_b = b->uv.x * b->inv_w;
+        v_over_w_b = b->uv.y * b->inv_w;
+
+        u_over_w_c = c->uv.x * c->inv_w;
+        v_over_w_c = c->uv.y * c->inv_w;
+    }
 
     // Loop all candidate pixels inside the bounding box
     for (i32 y = y_min; y <= y_max; y++) {
@@ -205,31 +216,27 @@ static void barycentric_rasterization(const VertexOut* a, const VertexOut* b,
                 f32 alpha = w0 / (f32)area;
                 f32 beta = w1 / (f32)area;
                 f32 gamma = w2 / (f32)area;
-
-                if (alpha < 0.0f || alpha > 1.0f || beta < 0.0f ||
-                    beta > 1.0f || gamma < 0.0f || gamma > 1.0f) {
-                    continue;
-                }
-
                 // Z interpolation
                 f32 z = alpha * a->depth + beta * b->depth + gamma * c->depth;
+                // Paint pixel only if it is closer to the camera than the
+                // previous pixel.
                 if (z < depth_buffer[y * width + x]) {
-                    // UV interpolation (texture mapping)
-                    f32 inv_w =
-                        alpha * a->inv_w + beta * b->inv_w + gamma * c->inv_w;
-
-                    f32 u_over_w = alpha * u_over_w_a + beta * u_over_w_b +
-                                   gamma * u_over_w_c;
-                    f32 v_over_w = alpha * v_over_w_a + beta * v_over_w_b +
-                                   gamma * v_over_w_c;
-
-                    f32 u = u_over_w / inv_w;
-                    f32 v = v_over_w / inv_w;
-
-                    Color color = Texture_sample(texture, u, v);
-
+                    Color final_color = material_color;
+                    if (has_texture) {
+                        // UV interpolation (texture mapping)
+                        f32 inv_w = alpha * a->inv_w + beta * b->inv_w +
+                                    gamma * c->inv_w;
+                        f32 u_over_w = alpha * u_over_w_a + beta * u_over_w_b +
+                                       gamma * u_over_w_c;
+                        f32 v_over_w = alpha * v_over_w_a + beta * v_over_w_b +
+                                       gamma * v_over_w_c;
+                        f32 u = u_over_w / inv_w;
+                        f32 v = v_over_w / inv_w;
+                        final_color = Texture_sample(texture, u, v);
+                    }
+                    // Update buffers
                     depth_buffer[y * width + x] = z;
-                    put_pixel(x, y, color, frame_buffer, width);
+                    put_pixel(x, y, final_color, frame_buffer, width);
                 }
             }
             w0 += delta_w0_col;

@@ -204,80 +204,82 @@ static void bresenham(Vector2 a, Vector2 b, Color color, Color* frame_buffer,
 void Rasterizer2D_draw_triangle_solid(Vector2 a, Vector2 b, Vector2 c,
                                       Color* frame_buffer, i32 width,
                                       i32 height) {
-    Color colors[3] = {COLOR_RED, COLOR_GREEN, COLOR_BLUE};
-
-    // Find bounding box with all the candidate pixels
-    i32 x_min = floor(Math_min(a.x, (Math_min(b.x, c.x))));
-    i32 y_min = floor(Math_min(a.y, Math_min(b.y, c.y)));
-    i32 x_max = ceil(Math_max(a.x, (Math_max(b.x, c.x))));
-    i32 y_max = ceil(Math_max(a.y, Math_max(b.y, c.y)));
-    // Check boundaries and clip triangle if necessary
-    x_min = Math_max(x_min, 0);
-    y_min = Math_max(y_min, 0);
-    x_max = Math_min(x_max, width - 1);
-    y_max = Math_min(y_max, height - 1);
-
-    // Compute the area of the parallelogram
-    f32 area = edge(a, b, c);
-
-    // Stick to top-left rule filling convention
-    f32 bias0 = is_top_left(b, c) ? 0 : -0.0001;
-    f32 bias1 = is_top_left(c, a) ? 0 : -0.0001;
-    f32 bias2 = is_top_left(a, b) ? 0 : -0.0001;
-
-    // Compute the constant delta values that will be used for horizontal and
-    // vertical steps in order to avoid computing edge function each
-    // iteration
-    f32 delta_w0_col = b.y - c.y;
-    f32 delta_w1_col = c.y - a.y;
-    f32 delta_w2_col = a.y - b.y;
-
-    f32 delta_w0_row = c.x - b.x;
-    f32 delta_w1_row = a.x - c.x;
-    f32 delta_w2_row = b.x - a.x;
-
-    // Compute edge function to see if pixel is inside triangle
-    Vector2 p = {x_min + 0.5f, y_min + 0.5f};
-    f32 w0_row = edge(b, c, p) + bias0;
-    f32 w1_row = edge(c, a, p) + bias1;
-    f32 w2_row = edge(a, b, p) + bias2;
-
-    bool is_inside;
-
-    // Loop all candidate pixels inside the bounding box
-    for (i32 y = y_min; y <= y_max; y++) {
-        f32 w0 = w0_row;
-        f32 w1 = w1_row;
-        f32 w2 = w2_row;
-        for (i32 x = x_min; x <= x_max; x++) {
-            if (area >= 0.0f) {
-                is_inside = w0 >= 0 && w1 >= 0 && w2 >= 0;
-            } else {
-                is_inside = w0 <= 0 && w1 <= 0 && w2 <= 0;
-            }
-            if (is_inside) {
-                // Compute barycentric coordinates alpha, beta and gamma
-                f32 alpha = w0 / area;
-                f32 beta = w1 / area;
-                f32 gamma = w2 / area;
-                u8 r = alpha * Color_get_red(colors[0]) +
-                       beta * Color_get_red(colors[1]) +
-                       gamma * Color_get_red(colors[2]);
-                u8 g = alpha * Color_get_green(colors[0]) +
-                       beta * Color_get_green(colors[1]) +
-                       gamma * Color_get_green(colors[2]);
-                u8 b = alpha * Color_get_blue(colors[0]) +
-                       beta * Color_get_blue(colors[1]) +
-                       gamma * Color_get_blue(colors[2]);
-                put_pixel(x, y, Color_create(r, g, b, 0xFF), frame_buffer,
-                          width);
-            }
-            w0 += delta_w0_col;
-            w1 += delta_w1_col;
-            w2 += delta_w2_col;
-        }
-        w0_row += delta_w0_row;
-        w1_row += delta_w1_row;
-        w2_row += delta_w2_row;
-    }
+    //     Color colors[3] = {COLOR_RED, COLOR_GREEN, COLOR_BLUE};
+    //
+    //     // Find bounding box with all the candidate pixels
+    //     i32 x_min = floor(Math_min(a.x, (Math_min(b.x, c.x))));
+    //     i32 y_min = floor(Math_min(a.y, Math_min(b.y, c.y)));
+    //     i32 x_max = ceil(Math_max(a.x, (Math_max(b.x, c.x))));
+    //     i32 y_max = ceil(Math_max(a.y, Math_max(b.y, c.y)));
+    //     // Check boundaries and clip triangle if necessary
+    //     x_min = Math_max(x_min, 0);
+    //     y_min = Math_max(y_min, 0);
+    //     x_max = Math_min(x_max, width - 1);
+    //     y_max = Math_min(y_max, height - 1);
+    //
+    //     // Compute the area of the parallelogram
+    //     f32 area = edge(a, b, c);
+    //
+    //     // Stick to top-left rule filling convention
+    //     f32 bias0 = is_top_left(b, c) ? 0 : -0.0001;
+    //     f32 bias1 = is_top_left(c, a) ? 0 : -0.0001;
+    //     f32 bias2 = is_top_left(a, b) ? 0 : -0.0001;
+    //
+    //     // Compute the constant delta values that will be used for horizontal
+    //     and
+    //     // vertical steps in order to avoid computing edge function each
+    //     // iteration
+    //     f32 delta_w0_col = b.y - c.y;
+    //     f32 delta_w1_col = c.y - a.y;
+    //     f32 delta_w2_col = a.y - b.y;
+    //
+    //     f32 delta_w0_row = c.x - b.x;
+    //     f32 delta_w1_row = a.x - c.x;
+    //     f32 delta_w2_row = b.x - a.x;
+    //
+    //     // Compute edge function to see if pixel is inside triangle
+    //     Vector2 p = {x_min + 0.5f, y_min + 0.5f};
+    //     f32 w0_row = edge(b, c, p) + bias0;
+    //     f32 w1_row = edge(c, a, p) + bias1;
+    //     f32 w2_row = edge(a, b, p) + bias2;
+    //
+    //     bool is_inside;
+    //
+    //     // Loop all candidate pixels inside the bounding box
+    //     for (i32 y = y_min; y <= y_max; y++) {
+    //         f32 w0 = w0_row;
+    //         f32 w1 = w1_row;
+    //         f32 w2 = w2_row;
+    //         for (i32 x = x_min; x <= x_max; x++) {
+    //             if (area >= 0.0f) {
+    //                 is_inside = w0 >= 0 && w1 >= 0 && w2 >= 0;
+    //             } else {
+    //                 is_inside = w0 <= 0 && w1 <= 0 && w2 <= 0;
+    //             }
+    //             if (is_inside) {
+    //                 // Compute barycentric coordinates alpha, beta and gamma
+    //                 f32 alpha = w0 / area;
+    //                 f32 beta = w1 / area;
+    //                 f32 gamma = w2 / area;
+    //                 u8 r = alpha * Color_get_red(colors[0]) +
+    //                        beta * Color_get_red(colors[1]) +
+    //                        gamma * Color_get_red(colors[2]);
+    //                 u8 g = alpha * Color_get_green(colors[0]) +
+    //                        beta * Color_get_green(colors[1]) +
+    //                        gamma * Color_get_green(colors[2]);
+    //                 u8 b = alpha * Color_get_blue(colors[0]) +
+    //                        beta * Color_get_blue(colors[1]) +
+    //                        gamma * Color_get_blue(colors[2]);
+    //                 put_pixel(x, y, Color_create(r, g, b, 0xFF),
+    //                 frame_buffer,
+    //                           width);
+    //             }
+    //             w0 += delta_w0_col;
+    //             w1 += delta_w1_col;
+    //             w2 += delta_w2_col;
+    //         }
+    //         w0_row += delta_w0_row;
+    //         w1_row += delta_w1_row;
+    //         w2_row += delta_w2_row;
+    //     }
 }
