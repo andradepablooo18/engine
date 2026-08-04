@@ -17,12 +17,12 @@ RELEASE_BIN = $(BIN_DIR)/release/$(TARGET)
 COMMON_FLAGS = -Wall -Wextra -std=c17 \
                -Iinclude \
                -Isrc \
-               $(shell pkg-config --cflags sdl3)
+               $(shell pkg-config --cflags sdl3 sdl3-image)
 
 DEBUG_FLAGS = -g -O0 -DDEBUG
 RELEASE_FLAGS = -O2 -DNDEBUG
 
-LDFLAGS = $(shell pkg-config --libs sdl3)
+LDFLAGS = $(shell pkg-config --libs sdl3 sdl3-image)
 
 
 .PHONY: debug release debug-run release-run clean

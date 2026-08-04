@@ -56,8 +56,8 @@ void Rasterizer3D_draw_object3D_solid(const Camera* camera, const Object3D* obj,
     u32 index_count = Mesh_get_index_count(mesh);
 
     /* --- Just temporary */
-    Texture* checker = NULL;
-    if (!Texture_create_checker(&checker))
+    Texture* wood = NULL;
+    if (!Texture_create(&wood, "assets/wood.png"))
         return;
     /* --- Just temporary */
 
@@ -72,12 +72,12 @@ void Rasterizer3D_draw_object3D_solid(const Camera* camera, const Object3D* obj,
         if (a.inv_w <= 0.0f || b.inv_w <= 0.0f || c.inv_w <= 0.0f) {
             continue;
         }
-        barycentric_rasterization(&a, &b, &c, checker, frame_buffer,
-                                  depth_buffer, width, height);
+        barycentric_rasterization(&a, &b, &c, wood, frame_buffer, depth_buffer,
+                                  width, height);
     }
 
     free(projected_vertices);
-    Texture_destroy(&checker);
+    Texture_destroy(&wood);
 }
 
 static VertexOut* project_Object3D_vertices_to_screen(

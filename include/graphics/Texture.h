@@ -7,7 +7,8 @@
 
 typedef struct Texture Texture;
 
-bool Texture_create(Texture** self, u32 width, u32 height);
+// bool Texture_create(Texture** self, u32 width, u32 height);
+bool Texture_create(Texture** self, const char* path);
 bool Texture_create_checker(Texture** self);
 void Texture_destroy(Texture** self);
 

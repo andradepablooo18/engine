@@ -160,9 +160,6 @@ bool Renderer_create(Renderer** self, Window* window, RasterMode raster_mode) {
         Renderer_destroy(self);
         return false;
     }
-    // Default
-    // SDL_SetTextureScaleMode(s->color_buffer_texture, SDL_SCALEMODE_LINEAR)
-    // For pixel art
     SDL_SetTextureScaleMode(s->color_buffer_texture, SDL_SCALEMODE_NEAREST);
 
     s->color_buffer = calloc(width * height, sizeof(Color));

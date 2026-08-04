@@ -13,7 +13,15 @@ static inline f32 Math_deg2rad(f32 degrees) { return degrees * (PI / 180.0f); }
 
 static inline f32 Math_rad2deg(f32 radians) { return radians * (180.0f / PI); }
 
-static inline f32 Math_clamp(f32 x, f32 min, f32 max) {
+static inline f32 Math_clamp_f32(f32 x, f32 min, f32 max) {
+    if (x < min)
+        return min;
+    if (x > max)
+        return max;
+    return x;
+}
+
+static inline i32 Math_clamp_i32(i32 x, i32 min, i32 max) {
     if (x < min)
         return min;
     if (x > max)
