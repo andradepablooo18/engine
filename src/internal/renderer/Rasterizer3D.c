@@ -24,9 +24,8 @@ static VertexOut* project_Object3D_vertices_to_screen(
     const Camera* camera, const Transform* transform,
     const Vertex* mesh_vertices, u32 vertex_count, i32 width, i32 height);
 static VertexOut ndc_to_screen(Vector3 ndc, i32 width, i32 height);
-static void barycentric_rasterization(const VertexOut* a_out,
-                                      const VertexOut* b_out,
-                                      const VertexOut* c_out,
+static void barycentric_rasterization(const VertexOut* a, const VertexOut* b,
+                                      const VertexOut* c,
                                       const Texture* texture,
                                       Color* frame_buffer, f32* depth_buffer,
                                       i32 width, i32 height);
@@ -66,6 +65,13 @@ void Rasterizer3D_draw_object3D_solid(const Camera* camera, const Object3D* obj,
         VertexOut a = projected_vertices[mesh_indices[i]];
         VertexOut b = projected_vertices[mesh_indices[i + 1]];
         VertexOut c = projected_vertices[mesh_indices[i + 2]];
+
+        // VIEW FRUSTUM CULLING
+        // If any triangle vertex is behing cameraa (w <= 0) all triangle is
+        // discarded
+        if (a.inv_w <= 0.0f || b.inv_w <= 0.0f || c.inv_w <= 0.0f) {
+            continue;
+        }
         barycentric_rasterization(&a, &b, &c, checker, frame_buffer,
                                   depth_buffer, width, height);
     }
@@ -106,22 +112,13 @@ static VertexOut* project_Object3D_vertices_to_screen(
         Vector4 view = Matrix4_multiply_vector(view_matrix, world);
         // Camera space -> Clip space
         Vector4 clip = Matrix4_multiply_vector(projection_matrix, view);
-        // Clipping
-        // if (clip.x < -clip.w || clip.x >
-        // clip.w)
-        //     continue;
-        // if (clip.y < -clip.w || clip.y >
-        // clip.w)
-        //     continue;
-        // if (clip.z < -clip.w || clip.z >
-        // clip.w)
-        //     continue;
         // Perspective divide
         Vector3 ndc = {clip.x / clip.w, clip.y / clip.w, clip.z / clip.w};
         // Normalized Device Coordinates
         // (NDC) -> Screen coordinates
         projected_vertices[i] = ndc_to_screen(ndc, width, height);
         projected_vertices[i].uv = mesh_vertices[i].uv;
+        projected_vertices[i].inv_w = 1 / clip.w;
     }
     return projected_vertices;
 }
@@ -187,6 +184,15 @@ static void barycentric_rasterization(const VertexOut* a, const VertexOut* b,
     i64 w1_row = edge(c_i, a_i, p) + bias1;
     i64 w2_row = edge(a_i, b_i, p) + bias2;
 
+    f32 u_over_w_a = a->uv.x * a->inv_w;
+    f32 v_over_w_a = a->uv.y * a->inv_w;
+
+    f32 u_over_w_b = b->uv.x * b->inv_w;
+    f32 v_over_w_b = b->uv.y * b->inv_w;
+
+    f32 u_over_w_c = c->uv.x * c->inv_w;
+    f32 v_over_w_c = c->uv.y * c->inv_w;
+
     // Loop all candidate pixels inside the bounding box
     for (i32 y = y_min; y <= y_max; y++) {
         i64 w0 = w0_row;
@@ -200,14 +206,28 @@ static void barycentric_rasterization(const VertexOut* a, const VertexOut* b,
                 f32 beta = w1 / (f32)area;
                 f32 gamma = w2 / (f32)area;
 
-                // UV interpolation (texture mapping)
-                f32 u = alpha * a->uv.x + beta * b->uv.x + gamma * c->uv.x;
-                f32 v = alpha * a->uv.y + beta * b->uv.y + gamma * c->uv.y;
-                Color color = Texture_sample(texture, u, v);
+                if (alpha < 0.0f || alpha > 1.0f || beta < 0.0f ||
+                    beta > 1.0f || gamma < 0.0f || gamma > 1.0f) {
+                    continue;
+                }
 
                 // Z interpolation
                 f32 z = alpha * a->depth + beta * b->depth + gamma * c->depth;
                 if (z < depth_buffer[y * width + x]) {
+                    // UV interpolation (texture mapping)
+                    f32 inv_w =
+                        alpha * a->inv_w + beta * b->inv_w + gamma * c->inv_w;
+
+                    f32 u_over_w = alpha * u_over_w_a + beta * u_over_w_b +
+                                   gamma * u_over_w_c;
+                    f32 v_over_w = alpha * v_over_w_a + beta * v_over_w_b +
+                                   gamma * v_over_w_c;
+
+                    f32 u = u_over_w / inv_w;
+                    f32 v = v_over_w / inv_w;
+
+                    Color color = Texture_sample(texture, u, v);
+
                     depth_buffer[y * width + x] = z;
                     put_pixel(x, y, color, frame_buffer, width);
                 }

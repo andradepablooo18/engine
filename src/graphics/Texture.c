@@ -68,6 +68,8 @@ void Texture_destroy(Texture** self) {
 
 Color Texture_sample(const Texture* self, f32 u, f32 v) {
     assert(self);
+    u = Math_clamp(u, 0.0f, 0.9999f);
+    v = Math_clamp(v, 0.0f, 0.9999f);
     u32 x = (u32)(u * (self->width - 1));
     u32 y = (u32)(v * (self->height - 1));
     return self->pixels[y * self->width + x];
