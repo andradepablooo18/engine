@@ -1,5 +1,6 @@
 #include "Rasterizer3D.h"
 #include "RasterizerCommon.h"
+#include "graphics/Material.h"
 #include "graphics/Mesh.h"
 #include "graphics/Texture.h"
 #include "graphics/Vertex.h"
@@ -39,6 +40,8 @@ void Rasterizer3D_draw_object3D_solid(const Camera* camera, const Object3D* obj,
     /* 1. Vertex Processing */
     const Transform* transform = Object3D_get_transform(obj);
     const Mesh* mesh = Object3D_get_mesh(obj);
+    if (!mesh)
+        return;
     const Vertex* vertices = Mesh_get_vertices(mesh);
     u32 vertex_count = Mesh_get_vertex_count(mesh);
 
@@ -54,6 +57,9 @@ void Rasterizer3D_draw_object3D_solid(const Camera* camera, const Object3D* obj,
 
     /* 2. Rasterization */
     const Material* material = Object3D_get_material(obj);
+    if (!material) {
+        material = Material_get_default();
+    }
     const u32* mesh_indices = Mesh_get_indices(mesh);
     u32 index_count = Mesh_get_index_count(mesh);
 

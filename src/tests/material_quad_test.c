@@ -1,0 +1,146 @@
+// #include "core/Engine.h"
+// #include "core/types.h"
+// #include "graphics/Camera.h"
+// #include "graphics/Material.h"
+// #include "graphics/Mesh.h"
+// #include "graphics/Texture.h"
+// #include "input/Input.h"
+// #include "input/keys.h"
+// #include "math/common.h"
+// #include "scene/Object3D.h"
+// #include <stdio.h>
+// #include <stdlib.h>
+//
+// #define SPEED 10.0f
+// #define ZOOM_SPEED 0.1f
+// #define SENSITIVITY 0.001f
+// #define ROTATION_SPEED HALF_PI
+// #define INV_SQRT2 0.70710678
+//
+// bool setup(Engine* e);
+// void update(Engine* e, f32 dt);
+// void draw(Engine* e);
+// void destroy(void);
+//
+// bool create_default_quad();
+// void move_quad(Input* input, f32 dt, f32 velocity);
+// void zoom_quad_with_mouse_wheel(Input* input, f32 zoom_speed);
+// void rotate_quad_when_pressed(Input* input, f32 sensitivity);
+//
+// Input* input = NULL;
+// Camera* camera = NULL;
+// Mesh* quad_mesh = NULL;
+// Texture* quad_texture = NULL;
+// Material* quad_material = NULL;
+// Object3D* quad = NULL;
+//
+// int main(void) {
+//     Engine* e = NULL;
+//     if (!Engine_create(&e)) {
+//         return EXIT_FAILURE;
+//     }
+//     if (!setup(e)) {
+//         return EXIT_FAILURE;
+//     }
+//
+//     EngineCallbacks callbacks = {.update = update, .draw = draw};
+//
+//     Engine_run(e, &callbacks);
+//
+//     Engine_destroy(&e);
+//
+//     destroy();
+//
+//     return EXIT_SUCCESS;
+// }
+//
+// bool setup(Engine* e) {
+//     input = Engine_get_input(e);
+//
+//     if (!Camera_create(&camera)) {
+//         return false;
+//     }
+//     if (!create_default_quad()) {
+//         return false;
+//     }
+//
+//     return true;
+// }
+//
+// void update(Engine* e, f32 dt) {
+//     move_quad(input, dt, SPEED);
+//     zoom_quad_with_mouse_wheel(input, ZOOM_SPEED);
+//     rotate_quad_when_pressed(input, SENSITIVITY);
+//     // rotate_cube_animation(dt, ROTATION_SPEED);
+// }
+//
+// void draw(Engine* e) { Engine_draw_object3D(e, camera, quad); }
+//
+// void destroy(void) {
+//     Camera_destroy(&camera);
+//     Mesh_destroy(&quad_mesh);
+//     Texture_destroy(&quad_texture);
+//     Material_destroy(&quad_material);
+//     Object3D_destroy(&quad);
+// }
+//
+// bool create_default_quad() {
+//     if (!Object3D_create(&quad)) {
+//         return false;
+//     }
+//
+//     Object3D_set_position(quad, (Vector3){0.0f, 0.0f, -10.0f});
+//
+//     if (!Mesh_create_quad(&quad_mesh)) {
+//         return false;
+//     }
+//     Object3D_set_mesh(quad, quad_mesh);
+//
+//     if (!Material_create(&quad_material)) {
+//         return false;
+//     }
+//     if (!Texture_create(&quad_texture, "assets/wood.png")) {
+//         return false;
+//     }
+//     Material_set_texture(quad_material, quad_texture);
+//     Material_set_color(quad_material, COLOR_YELLOW);
+//
+//     Object3D_set_material(quad, quad_material);
+//     return true;
+// }
+//
+// void move_quad(Input* input, f32 dt, f32 speed) {
+//     f32 dx = 0.0f;
+//     f32 dy = 0.0f;
+//     if (Input_is_key_down(input, KEY_W)) {
+//         dy = 1;
+//     }
+//     if (Input_is_key_down(input, KEY_S)) {
+//         dy = -1;
+//     }
+//     if (Input_is_key_down(input, KEY_A)) {
+//         dx = -1;
+//     }
+//     if (Input_is_key_down(input, KEY_D)) {
+//         dx = 1;
+//     }
+//     if (dx != 0.0f && dy != 0.0f) {
+//         dx *= INV_SQRT2;
+//         dy *= INV_SQRT2;
+//     }
+//     Object3D_translate(quad, (Vector3){dt * dx * speed, dt * dy * speed,
+//     0.0f});
+// }
+//
+// void zoom_quad_with_mouse_wheel(Input* input, f32 zoom_speed) {
+//     int wheel_y = Input_get_wheel_y(input);
+//     Camera_translate(camera, (Vector3){0, 0, -wheel_y * zoom_speed});
+// }
+//
+// void rotate_quad_when_pressed(Input* input, f32 sensivity) {
+//     if (Input_is_mouse_button_down(input, MOUSE_BUTTON_LEFT)) {
+//         Vector2 delta = Input_get_mouse_delta_position(input);
+//         Object3D_rotate(
+//             quad, (Vector3){delta.y * sensivity, delta.x * sensivity, 0.0f});
+//     }
+// }

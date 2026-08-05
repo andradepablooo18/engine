@@ -10,6 +10,11 @@ struct Material {
         Color color;
 };
 
+static const Material DEFAULT_MATERIAL = {.color = COLOR_WHITE,
+                                          .texture = NULL};
+
+const Material* Material_get_default() { return &DEFAULT_MATERIAL; }
+
 bool Material_create(Material** self) {
     assert(self);
 

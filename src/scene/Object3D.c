@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 struct Object3D {
-        Mesh* mesh;
         Transform transform;
+        Mesh* mesh;
         Material* material;
 };
 
@@ -15,8 +15,8 @@ bool Object3D_create(Object3D** self) {
         fprintf(stderr, "Object3D_create: allocation failed\n");
         return false;
     }
-    (*self)->mesh = NULL;
     (*self)->transform = Transform_identity();
+    (*self)->mesh = NULL;
     (*self)->material = NULL;
     return true;
 }
