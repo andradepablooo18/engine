@@ -6,7 +6,7 @@ At this point, my engine (which still doesn't have a name) is capable of:
 3. Creating 3D objects and rasterizing them using either solid colors or textured materials with UV coordinates.
 5. Providing several math modules used throughout the rendering pipeline (Matrix4, Vector2, Vector3, Vector4, and others).
    
-As you can see, the engine is still very simple. There are many features I'd like to add, but those are projects for another day—assuming I decide to come back and continue working on it.
+As you can see, the engine is still very simple. There are many features I'd like to add, but those are projects for another day, assuming I decide to come back and continue working on it.
 
 # What's still missing?
 Not only features, but also improvements to the overall codebase:
